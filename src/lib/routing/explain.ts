@@ -1,5 +1,6 @@
 import { ROUTING_CONFIG } from '../../config/routing';
 import type { RouteMetrics } from '../scoring/metrics';
+import type { AccessibilitySummary } from '../scoring/accessibility';
 
 /** Rounded headline share (mapped or likely lit) that matches the numbers shown in the legend. */
 export function headlineLitPct(metrics: RouteMetrics): number {
@@ -47,4 +48,22 @@ export function lightingWarnings(metrics: RouteMetrics): string[] {
     out.push(`${r.likely_lit}% is only likely lit: it is near mapped street lamps, which may be off or may not light the footway.`);
   }
   return out;
+}
+
+function flights(n: number): string {
+  return `${n} set${n === 1 ? '' : 's'} of mapped steps`;
+}
+
+export function easierRationale(fastest: AccessibilitySummary, easier: AccessibilitySummary, extraS: number): string {
+  const parts: string[] = [];
+  const stepsAvoided = fastest.steps.flights - easier.steps.flights;
+  if (stepsAvoided > 0) parts.push(`avoids ${flights(stepsAvoided)}`);
+  const reduction = Math.round(fastest.difficultM - easier.difficultM);
+  if (reduction >= 1) parts.push(`${reduction} m less on mapped steps, rough surfaces or steep tags`);
+  return `${extraTimeText(extraS)}; ${parts.join(' and ') || 'fewer mapped difficulties'}. Gradient information unavailable.`;
+}
+
+export function stepFreeRationale(fastest: AccessibilitySummary, extraS: number): string {
+  const avoided = fastest.steps.flights > 0 ? `Avoids the ${flights(fastest.steps.flights)} on the fastest route` : 'Avoids mapped barriers on the fastest route';
+  return `${avoided} (${extraTimeText(extraS)}).`;
 }

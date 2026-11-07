@@ -12,6 +12,10 @@ export interface RoutePreferences {
   showLongerAlternatives: boolean;
   /** Which family of lighting penalties generates better-lit candidates. */
   lightingEmphasis: LightingEmphasis;
+  /** Hard-exclude mapped steps from every route, including the fastest. Always on in step-free mode. */
+  avoidSteps: boolean;
+  /** Prefer mapped smooth surfaces in better-lit and step-free searches (always on in easier mode). */
+  preferSmoothSurfaces: boolean;
 }
 
 export const DEFAULT_PREFERENCES: RoutePreferences = {
@@ -19,6 +23,8 @@ export const DEFAULT_PREFERENCES: RoutePreferences = {
   maxDetourMin: ROUTING_CONFIG.detour.defaultMaxMin,
   showLongerAlternatives: false,
   lightingEmphasis: 'balanced',
+  avoidSteps: false,
+  preferSmoothSurfaces: false,
 };
 
 export const MODE_LABEL: Record<RouteMode, string> = {

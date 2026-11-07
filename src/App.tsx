@@ -33,7 +33,7 @@ import { DEFAULT_PREFERENCES, type RouteMode, type RoutePreferences } from './li
 
 const DESKTOP_PANEL_WIDTH = 440;
 /** Modes the planner implements in this build. */
-const AVAILABLE_MODES: RouteMode[] = ['fastest', 'better_lit'];
+const AVAILABLE_MODES: RouteMode[] = ['fastest', 'better_lit', 'easier', 'step_free'];
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();

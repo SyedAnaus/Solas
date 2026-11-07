@@ -57,6 +57,17 @@ export function RouteCard({ route, selected, onSelect }: { route: RouteCandidate
       <span className="mt-1.5 text-xs text-ink-muted">
         <strong className="text-sm font-extrabold text-ink">{headlineLitPct(m)}%</strong> mapped or likely lit
       </span>
+      <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-muted">
+        <Footprints className="size-3.5 shrink-0" aria-hidden="true" />
+        {route.accessibility.steps.flights === 0
+          ? 'No mapped steps'
+          : `${route.accessibility.steps.flights} set${route.accessibility.steps.flights === 1 ? '' : 's'} of steps`}
+      </span>
+      {route.roles.includes('step_free') && (
+        <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-teal">
+          <Accessibility className="size-3.5 shrink-0" aria-hidden="true" /> Not certified accessible
+        </span>
+      )}
       {route.overCap && (
         <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber">
           <AlertTriangle className="size-3.5" aria-hidden="true" /> Over your time limit

@@ -19,7 +19,7 @@ Numbering follows the project brief. Each phase leaves the app buildable, tested
 | 2 | Real OSM walking data for the UCC ↔ Parnell Place corridor (`prepare_cork_data.py`) | Done |
 | 3 | Real fastest route: browser A*, snapping, map-tap and landmark endpoints | Done |
 | 4 | Lighting evidence (4 classes with provenance) + better-lit alternative: candidate generation, detour cap, dedupe, 10-point threshold, side-by-side cards, evidence overlay | Done |
-| 5 | Easier walking and step-free routes: hard exclusions, surface/smoothness preferences, unknown-data warnings, refined preferences | In progress |
+| 5 | Easier walking and step-free routes: hard exclusions, surface/smoothness preferences, unknown-data warnings, refined preferences | Done |
 | 6 | UI refinement, Playwright checks, docs and final deployment hardening | Next |
 
 ## Key decisions

@@ -89,6 +89,43 @@ export const ROUTING_CONFIG = {
       ],
     } satisfies Record<LightingEmphasis, LightingPenalty[]>,
   },
+
+  /**
+   * Easier walking and step-free routing. Only OSM tags are used; there is no elevation model, so
+   * Solas never shows slope figures. `incline` tags are used qualitatively ("mapped as steep").
+   */
+  accessibility: {
+    surfaceClasses: {
+      smooth: ['asphalt', 'paved', 'concrete', 'concrete:plates', 'concrete:lanes', 'paving_stones', 'chipseal', 'metal', 'linoleum', 'tartan', 'rubber'],
+      moderate: ['fine_gravel', 'compacted', 'wood', 'grass_paver', 'bricks', 'paving_stones:lanes'],
+      rough: ['sett', 'cobblestone', 'unhewn_cobblestone', 'pebblestone', 'gravel', 'dirt', 'earth', 'ground', 'grass', 'mud', 'sand', 'rock', 'woodchips', 'unpaved', 'stepping_stones'],
+    },
+    /** Per-metre cost multipliers (all >= 1). Unknown surface gets a small uncertainty penalty only. */
+    surfaceMultiplier: { smooth: 1, moderate: 1.3, rough: 2, unknown: 1.05 },
+    smoothnessMultiplier: { excellent: 1, good: 1, intermediate: 1.15, bad: 1.6, very_bad: 2.5, horrible: 3, very_horrible: 3, impassable: 4 } as Record<string, number>,
+    /** OSM incline tags at or above these absolute percentages count as steep / moderately steep. */
+    steepInclinePct: 8,
+    moderateInclinePct: 5,
+    inclineMultiplier: { steep: 1.8, moderate: 1.3, directionOnly: 1.1 },
+    stepsMultiplier: 6,
+    wheelchairLimitedMultiplier: 1.3,
+    maxSegmentMultiplier: 10,
+    /** Easier routing searches with these exponents applied to the effort multiplier. */
+    easierExponents: [1, 2] as readonly number[],
+    easier: {
+      /** An easier alternative must remove a flight of steps or at least this much difficult length. */
+      minDifficultReductionM: 20,
+      /** Ranking: metres of difficult walking avoided, minus this many metres per extra minute. */
+      timeCostMPerMin: 15,
+    },
+    stepFree: {
+      /** Node barriers that block step-free travel when mapped. Gates are not blocked (often open). */
+      blockedBarriers: ['stile', 'kissing_gate', 'turnstile', 'full-height_turnstile', 'step', 'steps', 'cattle_grid', 'log', 'block'],
+      blockedKerbs: ['raised'],
+      /** Mapped kerb heights above this (metres) block step-free travel. */
+      maxKerbHeightM: 0.03,
+    },
+  },
 } as const;
 
 export type RoutingConfig = typeof ROUTING_CONFIG;

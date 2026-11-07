@@ -13,6 +13,7 @@ import { ROUTING_CONFIG } from '../../src/config/routing';
 import { routeOverlap } from '../../src/lib/routing/candidates';
 import { planRoutes } from '../../src/lib/routing/planner';
 import { DEFAULT_PREFERENCES } from '../../src/lib/routing/preferences';
+import { nodeStepFreeBlock, routeNodes, segmentStepFreeBlock } from '../../src/lib/scoring/accessibility';
 
 // Vitest runs from the project root.
 const file = (name: string) => resolve(process.cwd(), 'public/data/cork', name);
@@ -108,6 +109,42 @@ describe('UCC Main Quadrangle → Parnell Place Bus Station (fastest)', () => {
     }
     const drawn = polylineLengthM(better!.geometry.coordinates);
     expect(Math.abs(drawn - better!.metrics.distanceM) / better!.metrics.distanceM).toBeLessThan(0.005);
+  });
+
+  it('step-free routes never use mapped steps, wheelchair=no paths or blocked nodes (all landmark pairs)', () => {
+    let checked = 0;
+    for (const a of manifest.landmarks) {
+      for (const b of manifest.landmarks) {
+        if (a.id >= b.id) continue;
+        const plan = planRoutes(engine, a.routingPoint, b.routingPoint, { ...DEFAULT_PREFERENCES, mode: 'step_free' });
+        if (!plan.ok) continue;
+        const stepFree = plan.routes.find((r) => r.roles.includes('step_free'));
+        if (!stepFree) {
+          expect(plan.notices.some((n) => n.id === 'step-free-none')).toBe(true);
+          continue;
+        }
+        checked++;
+        for (const p of stepFree.pieces) expect(segmentStepFreeBlock(graph.segments[p.segment]!), `${a.id}->${b.id}`).toBeNull();
+        for (const n of routeNodes(graph, stepFree.pieces)) expect(nodeStepFreeBlock(graph.nodes[n]!), `${a.id}->${b.id}`).toBeNull();
+        expect(stepFree.accessibility.steps.flights).toBe(0);
+        expect(stepFree.accessibility.stepFreeBlockers).toEqual([]);
+        expect(stepFree.warnings.join(' ')).toMatch(/not verified as wheelchair accessible/);
+      }
+    }
+    expect(checked).toBeGreaterThan(50);
+  });
+
+  it('easier routes never add steps or difficult length compared with the fastest', () => {
+    for (const [a, b] of [['english-market', 'ucc-quad'], ['opera-house', 'ucc-quad'], ['fitzgeralds-park', 'ucc-quad']] as const) {
+      const plan = planRoutes(engine, landmark(a).routingPoint, landmark(b).routingPoint, { ...DEFAULT_PREFERENCES, mode: 'easier' });
+      if (!plan.ok) throw new Error('no plan');
+      const fastest = plan.routes[0]!;
+      const easier = plan.routes.find((r) => r.id === 'easier');
+      if (!easier) continue;
+      expect(easier.accessibility.steps.flights).toBeLessThanOrEqual(fastest.accessibility.steps.flights);
+      expect(easier.accessibility.difficultM).toBeLessThanOrEqual(fastest.accessibility.difficultM);
+      expect(easier.extraS).toBeLessThanOrEqual(DEFAULT_PREFERENCES.maxDetourMin * 60);
+    }
   });
 
   it('computes quickly once the graph is loaded', () => {

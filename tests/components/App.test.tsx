@@ -142,3 +142,41 @@ describe('fastest vs better lit (synthetic data)', () => {
     expect(screen.getByRole('combobox', { name: 'Start' })).toHaveValue('syn-a');
   });
 });
+
+describe('easier and step-free (synthetic data)', () => {
+  it('step-free mode avoids mapped steps and never certifies the route', async () => {
+    const user = await renderWithRoute('syn-b', 'syn-e');
+    await user.click(await screen.findByRole('radio', { name: 'Step-free' }));
+    const stepFree = await screen.findByRole('button', { name: /^Step-free route, about 4 min, 300 m, \+3 min compared with the fastest/ });
+    expect(stepFree).toHaveAttribute('aria-pressed', 'true');
+    expect(stepFree).toHaveAccessibleName(/no mapped steps, step-free by mapped data but not certified accessible/);
+    expect(card(/^Fastest route, about 2 min, 100 m/)).toHaveAccessibleName(/1 set of mapped steps/);
+    expect(screen.getByText(/Step-free by mapped data, not certified accessible/)).toBeInTheDocument();
+    expect(screen.getByText(/Gradient information unavailable: Solas has no trustworthy elevation data/)).toBeInTheDocument();
+  });
+
+  it('easier mode offers a route without the steps', async () => {
+    const user = await renderWithRoute('syn-b', 'syn-e');
+    await user.click(await screen.findByRole('radio', { name: 'Easier' }));
+    const easier = await screen.findByRole('button', { name: /^Easier walking route, about 4 min, 300 m/ });
+    expect(easier).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/avoids 1 set of mapped steps/)).toBeInTheDocument();
+  });
+
+  it('the avoid-steps switch changes the computed fastest route', async () => {
+    const user = await renderWithRoute('syn-b', 'syn-e');
+    await user.click(await screen.findByRole('radio', { name: 'Fastest' }));
+    await screen.findByRole('button', { name: /^Fastest(, also [a-z ]+)? route, about 2 min, 100 m/ });
+    await user.click(screen.getByRole('button', { name: /fine-tune/i }));
+    await user.click(screen.getByRole('switch', { name: 'Avoid steps' }));
+    expect(await screen.findByRole('button', { name: /^Fastest(, also [a-z ]+)? route, about 4 min, 300 m.*no mapped steps/ })).toBeInTheDocument();
+  });
+
+  it('offers no slope control without elevation data, and explains why', async () => {
+    const user = await renderWithRoute('syn-b', 'syn-e');
+    await user.click(await screen.findByRole('button', { name: /fine-tune/i }));
+    const slope = screen.getByRole('switch', { name: 'Prefer gentler slopes' });
+    expect(slope).toBeDisabled();
+    expect(slope).toHaveAccessibleDescription(/gradient information is unavailable/i);
+  });
+});

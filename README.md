@@ -9,7 +9,7 @@ Solas does **not** promise a "safe" route or a certified accessible route. It re
 OpenStreetMap contributors have mapped, and says clearly where data is missing.
 
 - Live site: https://syedanaus.github.io/Solas/
-- Status: Phases 1–4 done (map, real OSM walking graph, fastest route, better-lit comparison). See [docs/PLAN.md](docs/PLAN.md).
+- Status: Phases 1–5 done (map, real OSM walking graph, fastest, better-lit, easier and step-free routes). See [docs/PLAN.md](docs/PLAN.md).
 
 ## Try it
 
@@ -18,9 +18,12 @@ OpenStreetMap contributors have mapped, and says clearly where data is missing.
    or tap the map inside the dashed outline. The location button asks for permission first.
 3. Fastest and better-lit routes appear side by side with time, extra time and lighting evidence.
    Tap a card to select it; the map highlights it and colours it by lighting evidence.
-4. **Fine-tune** sets the maximum extra time (default 10 min), whether to show one longer
-   alternative (always flagged), and how strongly to weight lighting.
-5. Links are shareable: `https://syedanaus.github.io/Solas/#from=ucc-quad&to=parnell-place`.
+4. **Route preference** picks what Solas recommends: Fastest, Better lit, Easier or Step-free.
+   The fastest route is always shown alongside for comparison.
+5. **Fine-tune** sets the maximum extra time (default 10 min), whether to show one longer
+   alternative (always flagged), Avoid steps, Prefer smoother surfaces and lighting emphasis.
+   "Prefer gentler slopes" is shown but disabled, because there is no trustworthy elevation data.
+6. Links are shareable: `https://syedanaus.github.io/Solas/#from=ucc-quad&to=parnell-place`.
 
 Current result for that demo (real OSM data, 7 Nov 2026):
 
@@ -82,6 +85,31 @@ Every metre of the network has one of four lighting classes, each with provenanc
 
 The 10-point and 10-minute values come from the PRD and are configurable starting heuristics in
 `src/config/routing.ts`, not facts about safety.
+
+### Easier walking and step-free
+
+Both use the same graph and only OSM tags. There is no elevation model, so Solas never shows a
+slope figure: every route says "Gradient information unavailable". OSM `incline` tags (on about 4%
+of paths) are used only qualitatively, as "mapped as steep".
+
+- **Step-free** hard-excludes mapped steps (`highway=steps` or `step_count`), paths tagged
+  `wheelchair=no`, and nodes with confirmed blockers: `kerb=raised`, `kerb:height` over 3 cm,
+  stiles, kissing gates, turnstiles and similar. Exclusions are infinite cost, never small
+  penalties, and a real-data test checks every landmark pair. Gates and kerbs without height are
+  flagged, not blocked. Stretches tagged steep are avoided where an alternative exists. If no
+  route remains, Solas says "No verified step-free route" and does not offer one. Every step-free
+  route is labelled "not certified accessible" and lists its gaps: crossings without kerb data,
+  unmapped surfaces and widths, gates, and the missing gradient data. Because step-free is a
+  requirement, not an optional detour, a step-free route beyond the time limit is still shown,
+  with an explicit warning.
+- **Easier walking** searches with per-metre effort multipliers: steps ×6, rough surfaces (sett,
+  cobblestone, gravel...) ×2, uneven smoothness up to ×4, steep incline tags ×1.8,
+  `wheelchair=limited` ×1.3, and only ×1.05 for an unmapped surface. An easier option is shown
+  only if it removes a set of steps or at least 20 m of difficult walking, within the time limit.
+- **Avoid steps** removes mapped steps from every route, including the fastest.
+  **Prefer smoother surfaces** adds the surface multipliers to better-lit and step-free searches.
+- Each route lists its sets of steps (consecutive step segments, joining short landings),
+  difficult sections and data gaps.
 - All tunable numbers are in [`src/config/routing.ts`](src/config/routing.ts).
 
 ## Regenerating the Cork data

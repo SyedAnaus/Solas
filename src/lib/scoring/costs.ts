@@ -19,6 +19,8 @@ export interface CostProfile {
   lighting?: LightingMultipliers;
   /** Segments for which this returns true are never used (hard exclusion). */
   exclude?: (segment: Segment) => boolean;
+  /** Extra per-metre multiplier for a whole segment (e.g. effort or surface). Must be >= 1. */
+  segmentMultiplier?: (segment: Segment) => number;
 }
 
 /**
@@ -33,14 +35,20 @@ export function makeCost(profile: CostProfile): PieceCost {
       if (!(m >= 1) || !Number.isFinite(m)) throw new Error(`lighting multiplier for ${cls} must be a finite number >= 1`);
     }
   }
+  const segmentMultiplier = profile.segmentMultiplier;
   return (segment, fromFrac, toFrac) => {
     if (profile.exclude?.(segment)) return Infinity;
     const lo = Math.min(fromFrac, toFrac);
     const hi = Math.max(fromFrac, toFrac);
-    if (!lighting) return ((hi - lo) * segment.length) / profile.speedMps;
+    let k = 1;
+    if (segmentMultiplier) {
+      k = segmentMultiplier(segment);
+      if (!(k >= 1) || !Number.isFinite(k)) throw new Error(`segment multiplier must be a finite number >= 1, got ${k}`);
+    }
+    if (!lighting) return (k * (hi - lo) * segment.length) / profile.speedMps;
     const metres = lightingMetresInRange(segment, lo, hi);
     let weighted = 0;
     for (const cls of Object.keys(metres) as LightingClass[]) weighted += metres[cls] * lighting[cls];
-    return weighted / profile.speedMps;
+    return (k * weighted) / profile.speedMps;
   };
 }

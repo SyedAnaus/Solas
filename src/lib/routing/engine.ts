@@ -6,6 +6,7 @@ import { SegmentIndex, snapToNetwork, type SnapFailure, type SnapResult } from '
 import type { LngLat, PedestrianGraph, Segment } from '../graph/types';
 import { makeCost } from '../scoring/costs';
 import { routeEvidence, type EvidenceStretch } from '../scoring/evidence';
+import { computeAccessibility, type AccessibilitySummary } from '../scoring/accessibility';
 import { assessLighting, type LightingAssessment } from '../scoring/lightingScore';
 import { computeRouteMetrics, type RouteMetrics } from '../scoring/metrics';
 import { fastestRationale, lightingWarnings } from './explain';
@@ -31,6 +32,8 @@ export interface RouteCandidate {
   warnings: string[];
   /** Lighting stretches in walking order with geometry and provenance. */
   evidence: EvidenceStretch[];
+  /** Steps, surfaces, slope tags, kerbs, crossings and data gaps along the route. */
+  accessibility: AccessibilitySummary;
 }
 
 export type PlanError =
@@ -67,7 +70,8 @@ export class RoutingEngine {
       this.index,
       point,
       this.config.maxSnapDistanceM,
-      (seg) => isRoutable(seg, this.config.excludeIndoor) && (filter ? filter(seg) : true),
+      (seg) =>
+        (seg.forwardAllowed || seg.backwardAllowed) && isRoutable(seg, this.config.excludeIndoor) && (filter ? filter(seg) : true),
     );
   }
 
@@ -120,6 +124,7 @@ export class RoutingEngine {
       rationale,
       warnings: lightingWarnings(metrics),
       evidence: routeEvidence(this.graph, pieces),
+      accessibility: computeAccessibility(this.graph, pieces),
     };
   }
 

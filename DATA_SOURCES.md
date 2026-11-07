@@ -59,6 +59,19 @@ Limitations:
   missing. We have not found an openly licensed council inventory, so none is used.
 - `lit` tags reflect when a contributor last surveyed the street.
 
+## How accessibility tags are used
+
+| Use | Tags | Notes |
+| --- | --- | --- |
+| Step-free hard exclusion | `highway=steps`, `step_count`, `wheelchair=no` (ways and nodes), `kerb=raised`, `kerb:height` > 0.03 m, `barrier=stile/kissing_gate/turnstile/...` | Confirmed mapped blockers only |
+| Flagged, not excluded | `barrier=gate`, `barrier=kerb` without type or height, crossings without kerb tags | Shown as data gaps |
+| Easier walking effort | `surface`, `smoothness`, `incline` (qualitative), `wheelchair=limited`, steps | Unmapped surface is "unknown", not rough |
+| Reported per route | `width`, `sidewalk*`, `tactile_paving`, crossings and kerbs | Coverage is partial; see the dataset report |
+
+In this dataset `surface` is mapped on about 58% of walkway length, `incline` on about 4%,
+`wheelchair` on about 2% and `width` on about 5% (see the report). Most crossings have some kerb
+tagging, but many do not.
+
 ## Elevation and slope
 
 No elevation model is used. Slope is **unknown** everywhere except where an OSM `incline` tag

@@ -22,6 +22,9 @@ export function routeAccessibleSummary(route: RouteCandidate): string {
     route.roles.includes('fastest') ? 'fastest option' : `${extraTimeText(route.extraS)} compared with the fastest`,
     `lighting evidence: ${lightingSummaryText(m.lighting)}`,
   ];
+  const flights = route.accessibility.steps.flights;
+  parts.push(flights === 0 ? 'no mapped steps' : `${flights} set${flights === 1 ? '' : 's'} of mapped steps`);
+  if (route.roles.includes('step_free')) parts.push('step-free by mapped data but not certified accessible');
   if (route.overCap) parts.push('longer than your time limit');
   return `${parts.join(', ')}.`;
 }

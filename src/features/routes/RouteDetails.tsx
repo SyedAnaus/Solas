@@ -12,6 +12,7 @@ import { formatShare } from '../../lib/scoring/percent';
 import { LightingBar } from './LightingBar';
 import { LIGHTING_LABELS } from './lighting';
 import { routeTitle } from './routeText';
+import { AccessibilityDetails } from './AccessibilityDetails';
 
 const OSM = 'https://www.openstreetmap.org';
 
@@ -127,7 +128,7 @@ export function RouteDetails({
       </div>
 
       {route.warnings.length > 0 && (
-        <Notice tone="warning" title="About this route's data">
+        <Notice tone="warning" title="About this route">
           <ul className="list-disc space-y-1 pl-4">
             {route.warnings.map((w) => (
               <li key={w}>{w}</li>
@@ -135,6 +136,8 @@ export function RouteDetails({
           </ul>
         </Notice>
       )}
+
+      <AccessibilityDetails access={route.accessibility} stepFreeRole={route.roles.includes('step_free')} />
 
       <Switch label="Show lighting evidence on the map" checked={showEvidenceOnMap} onChange={onToggleEvidence} />
 

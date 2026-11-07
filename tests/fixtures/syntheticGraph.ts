@@ -75,8 +75,9 @@ export function buildSyntheticGraphFile(overrides: Partial<GraphFile['meta']> = 
       fwd: spec.fwd ?? true,
       bwd: spec.bwd ?? true,
       ways: [1000 + id],
-      tags: spec.tags ?? {},
-      light: spec.light,
+      // Fresh copies so tests that edit tags or lighting never leak into other tests.
+      tags: { ...(spec.tags ?? {}) },
+      light: spec.light.map((l) => [...l] as typeof l),
       g: coords.flat(),
     };
   });
