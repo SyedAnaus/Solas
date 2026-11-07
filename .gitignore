@@ -1,0 +1,29 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Python data pipeline
+.venv/
+__pycache__/
+*.pyc
+scripts/.cache/
+scripts/cache/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Local env files (never commit secrets; VITE_* values are public anyway)
+.env
+.env.*
+!.env.example

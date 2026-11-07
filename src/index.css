@@ -1,0 +1,197 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Solas design tokens.
+ * Route selection uses lavender; lighting evidence uses amber; accessibility uses teal.
+ * Status is never shown by colour alone: every coloured state also has an icon, pattern or label.
+ */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #070b1a;
+  --surface: #0f1530;
+  --surface-raised: #161d3f;
+  --surface-glass: rgb(15 21 48 / 0.86);
+  --border: rgb(165 176 230 / 0.18);
+  --border-strong: rgb(165 176 230 / 0.32);
+  --text: #eef0fb;
+  --text-muted: #aab0d4;
+  --text-subtle: #8e95bd;
+  --accent: #b79cff;
+  --accent-strong: #9d7bff;
+  --accent-contrast: #140b33;
+  --accent-soft: rgb(183 156 255 / 0.16);
+  --amber: #f8c15c;
+  --amber-soft: rgb(248 193 92 / 0.16);
+  --teal: #5fe0c8;
+  --teal-soft: rgb(95 224 200 / 0.14);
+  --danger: #ff8a8a;
+  --danger-soft: rgb(255 138 138 / 0.14);
+  --focus: #d7c8ff;
+  --shadow: 0 18px 50px -12px rgb(0 0 0 / 0.65), 0 2px 6px rgb(0 0 0 / 0.35);
+  --map-bg: #0a0f24;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --surface-raised: #f6f5ff;
+  --surface-glass: rgb(255 255 255 / 0.92);
+  --border: rgb(40 44 90 / 0.14);
+  --border-strong: rgb(40 44 90 / 0.28);
+  --text: #121633;
+  --text-muted: #474d74;
+  --text-subtle: #5d6389;
+  --accent: #6a4bd6;
+  --accent-strong: #5636c4;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgb(106 75 214 / 0.1);
+  --amber: #a35a00;
+  --amber-soft: rgb(245 158 11 / 0.14);
+  --teal: #0b6f66;
+  --teal-soft: rgb(13 148 136 / 0.12);
+  --danger: #b42318;
+  --danger-soft: rgb(180 35 24 / 0.08);
+  --focus: #5636c4;
+  --shadow: 0 16px 40px -14px rgb(18 22 51 / 0.28), 0 2px 6px rgb(18 22 51 / 0.08);
+  --map-bg: #eef0f6;
+}
+
+@theme inline {
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-glass: var(--surface-glass);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-subtle: var(--text-subtle);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --shadow-float: var(--shadow);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: 'tnum' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.sr-only-focusable:not(:focus):not(:focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* MapLibre controls, restyled to match Solas surfaces. */
+.maplibregl-map {
+  font-family: var(--font-sans);
+  background: var(--map-bg);
+}
+
+.maplibregl-ctrl-group {
+  background: var(--surface-glass) !important;
+  border: 1px solid var(--border);
+  border-radius: 14px !important;
+  box-shadow: var(--shadow) !important;
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border) !important;
+}
+
+[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) hue-rotate(180deg) brightness(1.15);
+}
+
+.maplibregl-ctrl-attrib {
+  background: var(--surface-glass) !important;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  border-radius: 10px 0 0 0;
+  padding: 2px 8px !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: var(--text);
+}
+
+.maplibregl-ctrl-attrib-button {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+@keyframes solas-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-raised) 0%, var(--border-strong) 50%, var(--surface-raised) 100%);
+  background-size: 200% 100%;
+  animation: solas-shimmer 1.6s ease-in-out infinite;
+  border-radius: 8px;
+}
