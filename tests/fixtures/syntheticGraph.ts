@@ -2,9 +2,12 @@
  * SYNTHETIC test graph. Not real geography: it sits at 0°N 0°E ("Null Island") and is marked
  * `synthetic: true`. It exists only to exercise routing logic in tests.
  *
- *   D(0,100) ──lit── E(100,100) ──lit── F(200,100)
- *     │lit             │steps,lit          │lit
- *   A(0,0) ─unknown─ B(100,0) ──unlit── C(200,0) ──one-way──> I(300,0)
+ *   D(0,100) ~~lit~~ E(100,100) ─half unknown/half likely─ F(200,100)
+ *     │lit             │steps,lit                            │lit
+ *   A(0,0) ─unknown─ B(100,0) ──────────unlit────────── C(200,0) ──one-way──> I(300,0)
+ *
+ *   D–E bends north through (50,160), so it is ~156 m long. The lit detour A→D→E→F→C is
+ *   ~456 m against 200 m for the fastest A→B→C: about 3.3 extra minutes at 1.3 m/s.
  *
  *   G(300,300) ── H(400,300)   (an island, not connected to anything else)
  *
@@ -34,10 +37,12 @@ export type NodeName = keyof typeof NODES;
 export const NODE_ORDER = Object.keys(NODES) as NodeName[];
 export const idx = (n: NodeName) => NODE_ORDER.indexOf(n);
 
+type LightSpec = [number, number, LightingClass] | [number, number, LightingClass, number[]];
+
 interface EdgeSpec {
   u: NodeName;
   v: NodeName;
-  light: [number, number, LightingClass][];
+  light: LightSpec[];
   tags?: Record<string, string>;
   fwd?: boolean;
   bwd?: boolean;
@@ -49,8 +54,8 @@ export const EDGE_SPECS: EdgeSpec[] = [
   { u: 'A', v: 'B', light: [[0, 1, 'unknown']], tags: { highway: 'footway' } }, // 0
   { u: 'B', v: 'C', light: [[0, 1, 'mapped_unlit']], tags: { highway: 'footway', lit: 'no' } }, // 1
   { u: 'A', v: 'D', light: [[0, 1, 'mapped_lit']], tags: { highway: 'residential', lit: 'yes' } }, // 2
-  { u: 'D', v: 'E', light: [[0, 1, 'mapped_lit']], tags: { highway: 'residential', lit: 'yes' } }, // 3
-  { u: 'E', v: 'F', light: [[0, 0.5, 'mapped_lit'], [0.5, 1, 'likely_lit']], tags: { highway: 'residential' } }, // 4
+  { u: 'D', v: 'E', light: [[0, 1, 'mapped_lit']], tags: { highway: 'residential', lit: 'yes' }, via: [[50, 160]] }, // 3
+  { u: 'E', v: 'F', light: [[0, 0.5, 'unknown'], [0.5, 1, 'likely_lit', [9001]]], tags: { highway: 'residential' } }, // 4
   { u: 'C', v: 'F', light: [[0, 1, 'mapped_lit']], tags: { highway: 'residential', lit: 'yes' } }, // 5
   { u: 'B', v: 'E', light: [[0, 1, 'mapped_lit']], tags: { highway: 'steps', lit: 'yes' } }, // 6
   { u: 'G', v: 'H', light: [[0, 1, 'unknown']], tags: { highway: 'footway' } }, // 7
@@ -100,6 +105,6 @@ export function buildSyntheticGraphFile(overrides: Partial<GraphFile['meta']> = 
     },
     nodes: { coords: NODE_ORDER.flatMap((n) => NODES[n]), osmIds: NODE_ORDER.map((_, i) => i + 1), tags: {} },
     edges,
-    lamps: [],
+    lamps: [{ id: 9001, c: P(150, 110) }],
   };
 }

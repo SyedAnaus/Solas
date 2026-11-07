@@ -28,6 +28,8 @@ export interface SearchRequest {
    * Use 1 / maxSpeed for time-based costs whose multipliers are all >= 1. Use 0 for plain Dijkstra.
    */
   heuristicCostPerMetre: number;
+  /** Nodes for which this returns false can never be entered or passed through. */
+  nodeAllowed?: (node: number) => boolean;
 }
 
 export interface SearchResult {
@@ -112,6 +114,7 @@ const FROM_START = -1;
  */
 export function findPath(graph: PedestrianGraph, request: SearchRequest): SearchResult | null {
   const { start, end, cost, heuristicCostPerMetre } = request;
+  const nodeOk = request.nodeAllowed ?? (() => true);
   const nodeCount = graph.nodes.length;
   const g = new Float64Array(nodeCount).fill(Infinity);
   const prevEdge = new Int32Array(nodeCount).fill(NO_PREV);
@@ -132,7 +135,7 @@ export function findPath(graph: PedestrianGraph, request: SearchRequest): Search
     { node: startSeg.v, piece: { segment: startSeg.id, reversed: false, fromFrac: start.fraction, toFrac: 1 }, allowed: startSeg.forwardAllowed },
   ];
   for (const seed of seeds) {
-    if (!seed.allowed) continue;
+    if (!seed.allowed || !nodeOk(seed.node)) continue;
     const c = checkCost(cost(startSeg, seed.piece.fromFrac, seed.piece.toFrac, seed.piece.reversed));
     if (!Number.isFinite(c) || c >= g[seed.node]!) continue;
     g[seed.node] = c;
@@ -148,7 +151,7 @@ export function findPath(graph: PedestrianGraph, request: SearchRequest): Search
     { node: endSeg.v, piece: { segment: endSeg.id, reversed: true, fromFrac: 1, toFrac: end.fraction }, allowed: endSeg.backwardAllowed },
   ];
   for (const option of exitOptions) {
-    if (!option.allowed) continue;
+    if (!option.allowed || !nodeOk(option.node)) continue;
     const c = checkCost(cost(endSeg, option.piece.fromFrac, option.piece.toFrac, option.piece.reversed));
     if (!Number.isFinite(c)) continue;
     const existing = exits.get(option.node);
@@ -193,7 +196,7 @@ export function findPath(graph: PedestrianGraph, request: SearchRequest): Search
     for (let i = graph.adjStart[node]!; i < graph.adjStart[node + 1]!; i++) {
       const edgeId = graph.adjEdges[i]!;
       const edge = graph.edges[edgeId]!;
-      if (settled[edge.to]) continue;
+      if (settled[edge.to] || !nodeOk(edge.to)) continue;
       let c = edgeCost[edgeId]!;
       if (Number.isNaN(c)) {
         const seg = graph.segments[edge.segment]!;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, Moon, Sun } from 'lucide-react';
+import { ArrowUpDown, Moon, Pencil, Sun } from 'lucide-react';
 import { BrandMark } from './components/BrandMark';
 import { IconButton } from './components/IconButton';
 import { Notice } from './components/Notice';
@@ -7,6 +7,7 @@ import { MapView, type MapStatus } from './features/map/MapView';
 import { CoverageOverlay } from './features/map/overlays/CoverageOverlay';
 import { LandmarkOverlay } from './features/map/overlays/LandmarkOverlay';
 import { RouteOverlay } from './features/map/overlays/RouteOverlay';
+import { EvidenceOverlay } from './features/map/overlays/EvidenceOverlay';
 import { EndpointMarker } from './features/map/overlays/EndpointMarkers';
 import { FitToBounds, FitToRoute } from './features/map/overlays/CameraEffects';
 import { clampPadding, type Padding } from './features/map/camera';
@@ -19,6 +20,7 @@ import {
   type Endpoint,
   type EndpointRole,
 } from './features/planner/endpoints';
+import { FineTune, ModeSelector } from './features/preferences/PreferencePanel';
 import { ResultsPanel } from './features/routes/ResultsPanel';
 import { useDataset } from './hooks/useDataset';
 import { useElementHeight } from './hooks/useElementHeight';
@@ -26,8 +28,12 @@ import { useGeolocation } from './hooks/useGeolocation';
 import { useIsDesktop, usePrefersReducedMotion } from './hooks/useMediaQuery';
 import { useTheme } from './hooks/useTheme';
 import type { LngLat } from './lib/graph/types';
+import { planRoutes, type PlanResult } from './lib/routing/planner';
+import { DEFAULT_PREFERENCES, type RouteMode, type RoutePreferences } from './lib/routing/preferences';
 
-const DESKTOP_PANEL_WIDTH = 420;
+const DESKTOP_PANEL_WIDTH = 440;
+/** Modes the planner implements in this build. */
+const AVAILABLE_MODES: RouteMode[] = ['fastest', 'better_lit'];
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -38,12 +44,15 @@ export default function App() {
   const manifest = dataset.status === 'loading-manifest' ? null : (dataset.manifest ?? null);
   const engine = dataset.status === 'ready' ? dataset.engine : null;
   const landmarks = useMemo(() => manifest?.landmarks ?? [], [manifest]);
+  const lampCoords = useMemo(() => new Map<number, LngLat>(engine?.graph.lamps.map((l) => [l.id, l.coord]) ?? []), [engine]);
 
   const [origin, setOrigin] = useState<Endpoint | null>(null);
   const [destination, setDestination] = useState<Endpoint | null>(null);
   const [explicitPick, setExplicitPick] = useState<EndpointRole | null>(null);
   const [inputNotice, setInputNotice] = useState<{ role: EndpointRole; message: string } | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<RoutePreferences>(DEFAULT_PREFERENCES);
+  const [showEvidence, setShowEvidence] = useState(true);
+  const [editingEndpoints, setEditingEndpoints] = useState(false);
   const { locating, locate } = useGeolocation();
 
   // Restore endpoints from a shared link once landmarks are known (adjusting state during render,
@@ -60,6 +69,18 @@ export default function App() {
     const hash = endpointsToHash(origin, destination);
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
   }, [hydrated, origin, destination]);
+  // A link pasted into an already-open tab changes only the hash; follow it.
+  useEffect(() => {
+    if (!manifest) return;
+    const onHashChange = () => {
+      const fromHash = endpointsFromHash(window.location.hash, manifest.landmarks);
+      setOrigin(fromHash.origin);
+      setDestination(fromHash.destination);
+      setInputNotice(null);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [manifest]);
 
   const pickTarget: EndpointRole | null = engine ? (explicitPick ?? (!origin ? 'origin' : !destination ? 'destination' : null)) : null;
 
@@ -123,12 +144,19 @@ export default function App() {
     }
   };
 
-  const outcome = useMemo(
-    () => (engine && origin && destination ? engine.planFastest(origin.point, destination.point) : null),
-    [engine, origin, destination],
+  const outcome: PlanResult | null = useMemo(
+    () => (engine && origin && destination ? planRoutes(engine, origin.point, destination.point, prefs) : null),
+    [engine, origin, destination, prefs],
   );
   const routes = useMemo(() => (outcome?.ok ? outcome.routes : []), [outcome]);
-  const selected = routes.find((r) => r.id === selectedId) ?? routes[0] ?? null;
+
+  // Selection follows the recommendation whenever the plan changes (new endpoints or preferences),
+  // and the user's explicit choice otherwise.
+  const [choice, setChoice] = useState<{ plan: PlanResult | null; id: string | null }>({ plan: null, id: null });
+  if (choice.plan !== outcome) setChoice({ plan: outcome, id: null });
+  const recommendedId = outcome?.ok ? outcome.recommendedId : null;
+  const selected = routes.find((r) => r.id === choice.id) ?? routes.find((r) => r.id === recommendedId) ?? routes[0] ?? null;
+  const selectRoute = (id: string) => setChoice({ plan: outcome, id });
 
   const fieldError = (role: EndpointRole): string | null => {
     if (inputNotice?.role === role) return inputNotice.message;
@@ -151,16 +179,28 @@ export default function App() {
     viewport.h,
   );
 
+  const compactPlanner = !isDesktop && Boolean(origin && destination) && !editingEndpoints && outcome?.ok === true;
+
   const results = (
-    <ResultsPanel
-      dataset={dataset}
-      onRetry={retry}
-      hasEndpoints={Boolean(origin && destination)}
-      outcome={outcome}
-      selectedId={selected?.id ?? null}
-      onSelect={setSelectedId}
-      onTryDemo={landmarks.some((l) => l.id === 'ucc-quad') ? tryDemo : undefined}
-    />
+    <div className="space-y-3">
+      {engine && origin && destination && (
+        <>
+          <ModeSelector prefs={prefs} onChange={setPrefs} availableModes={AVAILABLE_MODES} />
+          <FineTune prefs={prefs} onChange={setPrefs} />
+        </>
+      )}
+      <ResultsPanel
+        dataset={dataset}
+        onRetry={retry}
+        hasEndpoints={Boolean(origin && destination)}
+        outcome={outcome}
+        selectedId={selected?.id ?? null}
+        onSelect={selectRoute}
+        onTryDemo={landmarks.some((l) => l.id === 'ucc-quad') ? tryDemo : undefined}
+        showEvidenceOnMap={showEvidence}
+        onToggleEvidence={setShowEvidence}
+      />
+    </div>
   );
 
   return (
@@ -180,6 +220,7 @@ export default function App() {
           <LandmarkOverlay landmarks={landmarks} theme={theme} hasGlyphs={mapStatus.kind === 'ready' && mapStatus.basemap.kind === 'remote'} />
         )}
         <RouteOverlay routes={routes} selectedId={selected?.id ?? null} theme={theme} />
+        <EvidenceOverlay route={showEvidence ? selected : null} lampCoords={lampCoords} theme={theme} />
         <EndpointMarker point={origin?.point ?? null} role="origin" label={origin?.label ?? ''} />
         <EndpointMarker point={destination?.point ?? null} role="destination" label={destination?.label ?? ''} />
         <FitToRoute route={selected} padding={padding} reduceMotion={reduceMotion} />
@@ -208,40 +249,72 @@ export default function App() {
               </IconButton>
             </header>
 
-            <form className="relative space-y-2.5" aria-label="Choose start and destination" onSubmit={(e) => e.preventDefault()}>
-              <EndpointField
-                role="origin"
-                endpoint={origin}
-                landmarks={landmarks}
-                disabled={!engine}
-                picking={pickTarget === 'origin'}
-                locating={locating}
-                error={fieldError('origin')}
-                onChange={(e) => setEndpoint('origin', e)}
-                onTogglePick={() => setExplicitPick(pickTarget === 'origin' ? null : 'origin')}
-                onUseLocation={onUseLocation}
-              />
-              <EndpointField
-                role="destination"
-                endpoint={destination}
-                landmarks={landmarks}
-                disabled={!engine}
-                picking={pickTarget === 'destination'}
-                error={fieldError('destination')}
-                onChange={(e) => setEndpoint('destination', e)}
-                onTogglePick={() => setExplicitPick(pickTarget === 'destination' ? null : 'destination')}
-              />
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={swap}
-                  disabled={!origin && !destination}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-ink-muted hover:bg-surface-raised hover:text-ink disabled:opacity-40"
-                >
-                  <ArrowUpDown className="size-4" aria-hidden="true" /> Swap start and destination
-                </button>
+            {compactPlanner ? (
+              <div className="flex items-center gap-2 rounded-xl border border-line bg-surface p-2">
+                <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">
+                  <span className="sr-only">Route from </span>
+                  <span className="mr-1 inline-flex size-5 items-center justify-center rounded-full bg-ink text-[11px] font-extrabold text-bg" aria-hidden="true">
+                    A
+                  </span>
+                  <span className="align-middle">{origin?.label}</span>
+                  <span className="sr-only"> to </span>
+                  <span className="mx-1 text-ink-subtle" aria-hidden="true">
+                    →
+                  </span>
+                  <span className="mr-1 inline-flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-accent-contrast" aria-hidden="true">
+                    B
+                  </span>
+                  <span className="align-middle">{destination?.label}</span>
+                </p>
+                <IconButton label="Edit start and destination" onClick={() => setEditingEndpoints(true)}>
+                  <Pencil className="size-4" aria-hidden="true" />
+                </IconButton>
               </div>
-            </form>
+            ) : (
+              <form className="relative space-y-2.5" aria-label="Choose start and destination" onSubmit={(e) => e.preventDefault()}>
+                <EndpointField
+                  role="origin"
+                  endpoint={origin}
+                  landmarks={landmarks}
+                  disabled={!engine}
+                  picking={pickTarget === 'origin'}
+                  locating={locating}
+                  error={fieldError('origin')}
+                  onChange={(e) => setEndpoint('origin', e)}
+                  onTogglePick={() => setExplicitPick(pickTarget === 'origin' ? null : 'origin')}
+                  onUseLocation={onUseLocation}
+                />
+                <EndpointField
+                  role="destination"
+                  endpoint={destination}
+                  landmarks={landmarks}
+                  disabled={!engine}
+                  picking={pickTarget === 'destination'}
+                  error={fieldError('destination')}
+                  onChange={(e) => setEndpoint('destination', e)}
+                  onTogglePick={() => setExplicitPick(pickTarget === 'destination' ? null : 'destination')}
+                />
+                <div className="flex items-center justify-end gap-1">
+                  {!isDesktop && editingEndpoints && origin && destination && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingEndpoints(false)}
+                      className="mr-auto inline-flex h-9 items-center rounded-lg px-2.5 text-sm font-semibold text-accent hover:bg-surface-raised"
+                    >
+                      Done
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={swap}
+                    disabled={!origin && !destination}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-ink-muted hover:bg-surface-raised hover:text-ink disabled:opacity-40"
+                  >
+                    <ArrowUpDown className="size-4" aria-hidden="true" /> Swap start and destination
+                  </button>
+                </div>
+              </form>
+            )}
 
             {mapStatus.kind === 'unsupported' && <Notice tone="error">{mapStatus.message}</Notice>}
             {mapStatus.kind === 'ready' && mapStatus.basemap.kind === 'offline' && (
@@ -259,13 +332,10 @@ export default function App() {
 
       {pickTarget && (
         <div
-          className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 md:left-[calc(50%+210px)]"
-          style={{ top: isDesktop ? 20 : panelHeight + 20 }}
+          className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2"
+          style={{ top: isDesktop ? 20 : panelHeight + 20, marginLeft: isDesktop ? DESKTOP_PANEL_WIDTH / 2 : 0 }}
         >
-          <p
-            aria-live="polite"
-            className="rounded-full border border-line bg-surface-glass px-4 py-2 text-sm font-semibold shadow-float backdrop-blur-xl"
-          >
+          <p aria-live="polite" className="rounded-full border border-line bg-surface-glass px-4 py-2 text-sm font-semibold shadow-float backdrop-blur-xl">
             Tap the map to set your {pickTarget === 'origin' ? 'start' : 'destination'}
           </p>
         </div>
@@ -275,7 +345,7 @@ export default function App() {
         <section aria-label="Routes" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3">
           <div
             ref={sheetRef}
-            className="pointer-events-auto max-h-[46dvh] overflow-y-auto rounded-2xl border border-line bg-surface-glass p-3 shadow-float backdrop-blur-xl"
+            className="pointer-events-auto max-h-[52dvh] overflow-y-auto rounded-2xl border border-line bg-surface-glass p-3 shadow-float backdrop-blur-xl"
           >
             {results}
           </div>

@@ -1,56 +1,67 @@
-import { Footprints, Timer } from 'lucide-react';
-import { ROUTING_CONFIG } from '../../config/routing';
-import { formatDistance, formatDuration, formatSpeedKmh } from '../../lib/format';
+import { Accessibility, AlertTriangle, Check, Footprints, Lightbulb, Timer } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { formatDistance, formatDuration } from '../../lib/format';
 import type { RouteCandidate } from '../../lib/routing/engine';
+import { extraTimeText, headlineLitPct } from '../../lib/routing/explain';
+import { MODE_LABEL, type RouteRole } from '../../lib/routing/preferences';
 import { LightingBar } from './LightingBar';
-import { lightingSummaryText } from './lighting';
+import { routeAccessibleSummary } from './routeText';
 
-const PREFERENCE_LABEL: Record<string, string> = {
-  fastest: 'Fastest',
-  better_lit: 'Better lit',
-  easier: 'Easier walking',
-  step_free: 'Step-free',
+const ROLE_ICON: Record<RouteRole, ReactNode> = {
+  fastest: <Timer className="size-3.5" aria-hidden="true" />,
+  better_lit: <Lightbulb className="size-3.5" aria-hidden="true" />,
+  easier: <Footprints className="size-3.5" aria-hidden="true" />,
+  step_free: <Accessibility className="size-3.5" aria-hidden="true" />,
 };
 
+/** Compact card for side-by-side comparison. The whole card is the selection button. */
 export function RouteCard({ route, selected, onSelect }: { route: RouteCandidate; selected: boolean; onSelect: () => void }) {
-  const title = route.preferences.map((p) => PREFERENCE_LABEL[p] ?? p).join(' · ');
   const m = route.metrics;
-  const stepsText =
-    m.steps.segments === 0 ? 'No mapped steps' : `${m.steps.segments} flight${m.steps.segments === 1 ? '' : 's'} of mapped steps`;
+  const isFastest = route.roles.includes('fastest');
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      aria-label={`${title} route: about ${formatDuration(m.durationS)}, ${formatDistance(m.distanceM)}. ${lightingSummaryText(m.lighting)}. ${stepsText}.`}
-      className={`w-full rounded-2xl border p-3.5 text-left transition-colors ${
+      aria-label={routeAccessibleSummary(route)}
+      data-route-id={route.id}
+      className={`relative flex h-full w-full flex-col rounded-2xl border-2 p-3 text-left transition-colors ${
         selected ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:border-line-strong'
       }`}
     >
-      <div className="flex items-center gap-2">
-        <span className="inline-flex size-7 items-center justify-center rounded-lg bg-accent text-accent-contrast" aria-hidden="true">
-          <Timer className="size-4" />
-        </span>
-        <span className="font-bold">{title}</span>
-        {selected && (
-          <span className="ml-auto rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-accent-contrast">
-            Selected
+      <span className="flex flex-wrap items-center gap-1 pr-7">
+        {route.roles.map((role) => (
+          <span
+            key={role}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+              selected ? 'bg-accent text-accent-contrast' : 'bg-surface-raised text-ink'
+            }`}
+          >
+            {ROLE_ICON[role]}
+            {MODE_LABEL[role]}
           </span>
-        )}
-      </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-extrabold tracking-tight">{formatDuration(m.durationS)}</span>
-        <span className="text-sm text-ink-muted">{formatDistance(m.distanceM)}</span>
-      </div>
-      <p className="mt-0.5 text-xs text-ink-subtle">Estimate at {formatSpeedKmh(ROUTING_CONFIG.walkingSpeedMps)} walking pace</p>
-      <div className="mt-3">
-        <LightingBar lighting={m.lighting} />
-      </div>
-      <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-muted">
-        <Footprints className="size-3.5" aria-hidden="true" />
-        {stepsText}
-      </p>
-      <p className="mt-1.5 text-sm text-ink-muted">{route.rationale}</p>
+        ))}
+      </span>
+      {selected && (
+        <span className="absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full bg-accent text-accent-contrast" aria-hidden="true">
+          <Check className="size-4" />
+        </span>
+      )}
+      <span className="mt-2 text-[26px] font-extrabold leading-none tracking-tight">{formatDuration(m.durationS)}</span>
+      <span className="mt-1 text-xs font-semibold text-ink-muted">
+        {isFastest ? 'Fastest' : extraTimeText(route.extraS)} · {formatDistance(m.distanceM)}
+      </span>
+      <span className="mt-3 block">
+        <LightingBar lighting={m.lighting} compact />
+      </span>
+      <span className="mt-1.5 text-xs text-ink-muted">
+        <strong className="text-sm font-extrabold text-ink">{headlineLitPct(m)}%</strong> mapped or likely lit
+      </span>
+      {route.overCap && (
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber">
+          <AlertTriangle className="size-3.5" aria-hidden="true" /> Over your time limit
+        </span>
+      )}
     </button>
   );
 }

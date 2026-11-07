@@ -10,6 +10,8 @@ export interface LightingInterval {
   from: number;
   to: number;
   cls: LightingClass;
+  /** For likely_lit: OSM ids of the street lamps within range of this stretch (its provenance). */
+  lamps?: number[];
 }
 
 /** Where a piece of evidence came from. */
@@ -81,6 +83,10 @@ export interface DatasetManifest {
   counts: DatasetCounts;
   lightingMetres: Record<LightingClass, number>;
   licence: string;
+  /** Data-preparation parameters, e.g. lampRadiusMetres. */
+  parameters?: { lampRadiusMetres?: number; [key: string]: unknown };
+  /** Machine-readable rule, provenance and confidence for each lighting class. */
+  lightingClasses?: Record<LightingClass, { rule: string; provenance: string; confidence: string }>;
   graph: { path: string; bytes: number; sha256: string };
   landmarks: Landmark[];
 }
@@ -98,10 +104,10 @@ export interface GraphFileEdge {
   bwd: boolean;
   ways: number[];
   tags: Record<string, TagValue>;
-  light: [number, number, LightingClass][];
+  /** [from, to, class] or, for likely_lit, [from, to, 'likely_lit', lampIds]. */
+  light: ([number, number, LightingClass] | [number, number, LightingClass, number[]])[];
   /** Flat [lon, lat, lon, lat, ...] from node u to node v. */
   g: number[];
-  lamps?: number[];
 }
 
 export interface GraphFile {
@@ -133,6 +139,7 @@ export interface Segment {
   cumulative: Float64Array;
   tags: Record<string, TagValue>;
   light: LightingInterval[];
+  /** All lamps supporting likely_lit stretches on this segment. */
   lamps: number[];
   ways: number[];
   forwardAllowed: boolean;

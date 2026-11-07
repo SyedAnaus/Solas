@@ -5,19 +5,32 @@ import { findPath, type PieceCost, type RoutePiece } from '../graph/search';
 import { SegmentIndex, snapToNetwork, type SnapFailure, type SnapResult } from '../graph/spatialIndex';
 import type { LngLat, PedestrianGraph, Segment } from '../graph/types';
 import { makeCost } from '../scoring/costs';
+import { routeEvidence, type EvidenceStretch } from '../scoring/evidence';
+import { assessLighting, type LightingAssessment } from '../scoring/lightingScore';
 import { computeRouteMetrics, type RouteMetrics } from '../scoring/metrics';
+import { fastestRationale, lightingWarnings } from './explain';
+import type { RouteRole } from './preferences';
 
-export type RoutePreference = 'fastest' | 'better_lit' | 'easier' | 'step_free';
+export type { RouteRole } from './preferences';
 
+/** A physical route shown to the user. Several roles can share one route (deduplicated). */
 export interface RouteCandidate {
   id: string;
-  /** Preferences this physical route satisfies (several options can share one route). */
-  preferences: RoutePreference[];
+  roles: RouteRole[];
   pieces: RoutePiece[];
   geometry: RouteGeometry;
   metrics: RouteMetrics;
+  lighting: LightingAssessment;
+  /** Extra walking time compared with the fastest route (seconds, >= 0). */
+  extraS: number;
+  /** True only for an alternative beyond the user's detour cap, shown on explicit request. */
+  overCap: boolean;
   /** One-sentence, evidence-based reason this route is shown. */
   rationale: string;
+  /** Data-quality and coverage warnings specific to this route. */
+  warnings: string[];
+  /** Lighting stretches in walking order with geometry and provenance. */
+  evidence: EvidenceStretch[];
 }
 
 export type PlanError =
@@ -48,17 +61,29 @@ export class RoutingEngine {
     this.index = new SegmentIndex(graph, config.spatialIndexCellM);
   }
 
-  snap(point: LngLat) {
-    return snapToNetwork(this.graph, this.index, point, this.config.maxSnapDistanceM, (seg) => isRoutable(seg, this.config.excludeIndoor));
+  snap(point: LngLat, filter?: (seg: Segment) => boolean) {
+    return snapToNetwork(
+      this.graph,
+      this.index,
+      point,
+      this.config.maxSnapDistanceM,
+      (seg) => isRoutable(seg, this.config.excludeIndoor) && (filter ? filter(seg) : true),
+    );
   }
 
-  /** Run one search and package the result. Returns null when no permitted path exists. */
-  route(origin: SnapResult, destination: SnapResult, cost: PieceCost): { pieces: RoutePiece[]; cost: number } | null {
+  /** Run one search. Returns null when no permitted path exists. */
+  route(
+    origin: SnapResult,
+    destination: SnapResult,
+    cost: PieceCost,
+    nodeAllowed?: (node: number) => boolean,
+  ): { pieces: RoutePiece[]; cost: number } | null {
     const result = findPath(this.graph, {
       start: origin,
       end: destination,
       cost,
       heuristicCostPerMetre: 1 / this.config.walkingSpeedMps,
+      ...(nodeAllowed ? { nodeAllowed } : {}),
     });
     return result ? { pieces: result.pieces, cost: result.cost } : null;
   }
@@ -73,7 +98,32 @@ export class RoutingEngine {
     };
   }
 
-  /** Phase 2: the fastest walking route between two points. */
+  /** Package a found path as a user-facing route with metrics, evidence and warnings. */
+  buildRoute(
+    id: string,
+    roles: RouteRole[],
+    pieces: RoutePiece[],
+    fastestDurationS: number,
+    rationale: string,
+    overCap = false,
+  ): RouteCandidate {
+    const { geometry, metrics } = this.describe(pieces);
+    return {
+      id,
+      roles,
+      pieces,
+      geometry,
+      metrics,
+      lighting: assessLighting(metrics.lighting),
+      extraS: Math.max(0, metrics.durationS - fastestDurationS),
+      overCap,
+      rationale,
+      warnings: lightingWarnings(metrics),
+      evidence: routeEvidence(this.graph, pieces),
+    };
+  }
+
+  /** The fastest walking route only (used by tests and as the planner's baseline). */
   planFastest(originPoint: LngLat, destinationPoint: LngLat): PlanOutcome {
     const t0 = now();
     const done = <T extends object>(value: T) => ({ ...value, computeMs: now() - t0 });
@@ -90,30 +140,16 @@ export class RoutingEngine {
         error: { kind: 'same-place' as const, message: 'Start and destination are the same place. Choose two different points.' },
       });
     }
-
-    const fastestCost = makeCost({
-      speedMps: this.config.walkingSpeedMps,
-      exclude: (seg) => !isRoutable(seg, this.config.excludeIndoor),
-    });
-    const found = this.route(origin.snap, destination.snap, fastestCost);
+    const cost = makeCost({ speedMps: this.config.walkingSpeedMps, exclude: (seg) => !isRoutable(seg, this.config.excludeIndoor) });
+    const found = this.route(origin.snap, destination.snap, cost);
     if (!found) {
       return done({
         ok: false as const,
-        error: {
-          kind: 'no-path' as const,
-          message: 'No connected walking route was found between these points in the mapped network.',
-        },
+        error: { kind: 'no-path' as const, message: 'No connected walking route was found between these points in the mapped network.' },
       });
     }
-    const { geometry, metrics } = this.describe(found.pieces);
-    const fastest: RouteCandidate = {
-      id: 'fastest',
-      preferences: ['fastest'],
-      pieces: found.pieces,
-      geometry,
-      metrics,
-      rationale: 'Shortest walking time on the mapped network.',
-    };
+    const { metrics } = this.describe(found.pieces);
+    const fastest = this.buildRoute('fastest', ['fastest'], found.pieces, metrics.durationS, fastestRationale(metrics));
     return done({ ok: true as const, origin: origin.snap, destination: destination.snap, routes: [fastest] });
   }
 }

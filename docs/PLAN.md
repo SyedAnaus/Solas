@@ -11,28 +11,29 @@ workspace, so the requirements in the project brief are the source of truth.
 
 ## Phases
 
-Each phase leaves the app buildable, tested and deployable.
+Numbering follows the project brief. Each phase leaves the app buildable, tested and deployed.
 
-| Phase | Goal | Done when |
+| Phase | Goal | Status |
 | --- | --- | --- |
-| 1 | App skeleton + map on GitHub Pages | Vite/React/TS strict app with MapLibre + OpenFreeMap, theme toggle, attribution, style fallback, CI (typecheck, lint, test, build) deploying `dist/` to `https://syedanaus.github.io/Solas/` |
-| 2 | Real OSM data + real fastest route | `prepare_cork_data.py` builds a walk graph for the UCC ↔ Parnell Place corridor; browser A* over that graph; map-tap and landmark endpoints; snapping with a max distance; route drawn from real edge geometry |
-| 3 | Lighting evidence + better-lit alternative | Per-subsegment lighting classes (mapped lit / likely lit from lamps within 30 m / mapped unlit / unknown); candidate generation with penalties; detour cap; dedupe; comparison cards |
-| 4 | Step-free and easier walking | Hard exclusions for steps / `wheelchair=no` / confirmed barriers; surface and incline preferences where tagged; explicit unknowns and "no verified step-free route" state |
-| 5 | UI refinement | Bottom sheet (mobile) / side panel (desktop), route details panel, evidence overlay + legend, fine-tune sheet, Google Maps handoff, reduced motion, light theme polish |
-| 6 | Hardening | Full test matrix (routing, scoring, snapping, geometry agreement, components), Playwright mobile checks, docs (README, DATA_SOURCES, ATTRIBUTION), production preview + live check |
+| 1 | App skeleton + map on GitHub Pages (Vite/React/TS, MapLibre + OpenFreeMap, CI deploy) | Done |
+| 2 | Real OSM walking data for the UCC ↔ Parnell Place corridor (`prepare_cork_data.py`) | Done |
+| 3 | Real fastest route: browser A*, snapping, map-tap and landmark endpoints | Done |
+| 4 | Lighting evidence (4 classes with provenance) + better-lit alternative: candidate generation, detour cap, dedupe, 10-point threshold, side-by-side cards, evidence overlay | Done |
+| 5 | Easier walking and step-free routes: hard exclusions, surface/smoothness preferences, unknown-data warnings, refined preferences | In progress |
+| 6 | UI refinement, Playwright checks, docs and final deployment hardening | Next |
 
 ## Key decisions
 
 - **Static only.** No server code, no API keys. `VITE_*` variables are public, so none hold secrets.
 - **Base path.** Vite `base` is `/Solas/` by default and is set from the repository name in CI.
-  Data is loaded via `import.meta.env.BASE_URL`. The app is a single view, so no client router;
-  any shareable state goes in the URL hash.
-- **Basemap.** OpenFreeMap keyless styles (`dark` for the dark theme, `positron` for light).
-  If a style cannot be fetched, the next style is tried, then a built-in offline style that shows
-  only Solas's own walking network.
+  Data is loaded via `import.meta.env.BASE_URL`. Shareable state lives in the URL hash.
+- **Basemap.** OpenFreeMap keyless styles (`dark` / `positron`), then a second style, then a
+  built-in offline style showing only Solas's own data.
 - **Routing.** A* with an admissible straight-line heuristic over a compact directed graph.
   All tunable numbers live in `src/config/routing.ts`.
+- **Better lit is earned, not assumed.** An alternative is shown only if it is a distinct path,
+  within the user's detour cap, at least 10 points better on mapped-or-likely-lit length, with
+  lighting evidence on at least half its length, and no extra length mapped as unlit. Otherwise
+  the app shows one route and says why.
 - **Honesty rules.** No invented coordinates, routes, times, lighting or accessibility claims.
-  Synthetic test fixtures live in `tests/fixtures/` and are labelled synthetic. When data is
-  missing the UI says so.
+  Synthetic test fixtures live in `tests/fixtures/` and are labelled synthetic.

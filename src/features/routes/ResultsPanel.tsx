@@ -1,18 +1,21 @@
 import { Database, RotateCcw, Sparkles } from 'lucide-react';
 import { Notice } from '../../components/Notice';
 import { formatDate, formatDistance } from '../../lib/format';
-import type { PlanOutcome } from '../../lib/routing/engine';
+import type { PlanResult } from '../../lib/routing/planner';
 import type { DatasetState } from '../../hooks/useDataset';
 import { RouteCard } from './RouteCard';
+import { RouteDetails } from './RouteDetails';
 
 interface ResultsPanelProps {
   dataset: DatasetState;
   onRetry: () => void;
   hasEndpoints: boolean;
-  outcome: PlanOutcome | null;
+  outcome: PlanResult | null;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onTryDemo?: () => void;
+  showEvidenceOnMap: boolean;
+  onToggleEvidence: (on: boolean) => void;
 }
 
 function LoadingSkeleton({ label }: { label: string }) {
@@ -20,13 +23,26 @@ function LoadingSkeleton({ label }: { label: string }) {
     <div role="status" aria-live="polite" className="space-y-3">
       <span className="sr-only">{label}</span>
       <div className="skeleton h-5 w-2/3" />
-      <div className="skeleton h-24 w-full rounded-2xl" />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="skeleton h-32 rounded-2xl" />
+        <div className="skeleton h-32 rounded-2xl" />
+      </div>
       <div className="skeleton h-4 w-1/2" />
     </div>
   );
 }
 
-export function ResultsPanel({ dataset, onRetry, hasEndpoints, outcome, selectedId, onSelect, onTryDemo }: ResultsPanelProps) {
+export function ResultsPanel({
+  dataset,
+  onRetry,
+  hasEndpoints,
+  outcome,
+  selectedId,
+  onSelect,
+  onTryDemo,
+  showEvidenceOnMap,
+  onToggleEvidence,
+}: ResultsPanelProps) {
   if (dataset.status === 'loading-manifest' || dataset.status === 'loading-graph') {
     return <LoadingSkeleton label="Loading Cork walking data…" />;
   }
@@ -63,9 +79,7 @@ export function ResultsPanel({ dataset, onRetry, hasEndpoints, outcome, selected
     return (
       <div>
         <h2 className="text-base font-bold">Plan a walk</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Choose a start and destination from the list, or tap the map inside the outlined area.
-        </p>
+        <p className="mt-1 text-sm text-ink-muted">Choose a start and destination from the list, or tap the map inside the outlined area.</p>
         {onTryDemo && (
           <button
             type="button"
@@ -100,17 +114,33 @@ export function ResultsPanel({ dataset, onRetry, hasEndpoints, outcome, selected
     );
   }
 
+  const selected = outcome.routes.find((r) => r.id === selectedId) ?? outcome.routes[0]!;
   return (
-    <div>
+    <div className="space-y-3">
       <h2 className="sr-only">Route options</h2>
-      <ul className="space-y-2.5">
+      <ul
+        aria-label="Route options, side by side"
+        className="grid auto-cols-[minmax(158px,1fr)] grid-flow-col gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
+      >
         {outcome.routes.map((route) => (
-          <li key={route.id}>
-            <RouteCard route={route} selected={route.id === selectedId} onSelect={() => onSelect(route.id)} />
+          <li key={route.id} className="min-w-0">
+            <RouteCard route={route} selected={route.id === selected.id} onSelect={() => onSelect(route.id)} />
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-ink-subtle">Calculated on your device in {Math.max(1, Math.round(outcome.computeMs))} ms.</p>
+
+      {outcome.notices.map((n) => (
+        <Notice key={n.id} tone={n.tone} title={n.title}>
+          {n.message}
+        </Notice>
+      ))}
+
+      <RouteDetails route={selected} manifest={manifest} showEvidenceOnMap={showEvidenceOnMap} onToggleEvidence={onToggleEvidence} />
+
+      <p className="text-xs text-ink-subtle">
+        Calculated on your device in {Math.max(1, Math.round(outcome.computeMs))} ms ({outcome.stats.searches} searches,{' '}
+        {outcome.stats.distinctAlternatives} distinct alternative{outcome.stats.distinctAlternatives === 1 ? '' : 's'} checked).
+      </p>
       {footer}
     </div>
   );

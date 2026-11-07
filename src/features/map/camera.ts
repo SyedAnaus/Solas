@@ -23,7 +23,9 @@ export function clampPadding(p: Padding, width: number, height: number): Padding
 /** Fit the camera to a route when it changes, respecting reduced-motion preferences. */
 export function useFitToRoute(route: RouteCandidate | null, padding: Padding, reduceMotion: boolean): void {
   const { map } = useMapContext();
-  const key = route ? `${route.id}:${route.geometry.coordinates.length}:${route.metrics.distanceM.toFixed(1)}` : null;
+  // Refit when the route changes or when floating panels resize enough to hide part of it.
+  const pad = `${Math.round(padding.top / 24)}:${Math.round(padding.bottom / 24)}:${Math.round(padding.left / 24)}`;
+  const key = route ? `${route.id}:${route.geometry.coordinates.length}:${route.metrics.distanceM.toFixed(1)}:${pad}` : null;
   useEffect(() => {
     if (!map || !route || route.geometry.coordinates.length < 2) return;
     let w = Infinity;

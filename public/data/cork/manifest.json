@@ -4,7 +4,7 @@
   "synthetic": false,
   "areaId": "cork-ucc-parnell",
   "areaName": "UCC to Parnell Place corridor, Cork City",
-  "generatedAt": "2026-11-07T14:47:52Z",
+  "generatedAt": "2026-11-07T15:04:53Z",
   "osmDataTimestamps": [
     "2026-11-07T14:26:06Z",
     "2026-11-07T14:27:05Z",
@@ -53,6 +53,7 @@
     "totalLengthM": 201943.6,
     "lampsMapped": 1347,
     "lampsNearNetwork": 1279,
+    "lampsUsedAsEvidence": 1265,
     "stepsSegments": 188,
     "landmarks": 13
   },
@@ -62,11 +63,37 @@
     "mapped_unlit": 1134.2,
     "unknown": 70068.5
   },
+  "lightingClasses": {
+    "mapped_lit": {
+      "rule": "Way tagged lit=24/7|automatic|dusk-dawn|sunset-sunrise|yes (part-night values noted)",
+      "provenance": "OSM way ids and their lit tag on the segment",
+      "confidence": "mapped"
+    },
+    "likely_lit": {
+      "rule": "No lit tag; within 30 m of a mapped highway=street_lamp (sampled every 1 m)",
+      "provenance": "OSM street_lamp node ids listed on each stretch",
+      "confidence": "inferred"
+    },
+    "mapped_unlit": {
+      "rule": "Way tagged lit=disused|no",
+      "provenance": "OSM way ids and their lit tag on the segment",
+      "confidence": "mapped"
+    },
+    "unknown": {
+      "rule": "No lit tag and no mapped lamp within the radius",
+      "provenance": "none",
+      "confidence": "none"
+    }
+  },
+  "parameters": {
+    "lampRadiusMetres": 30.0,
+    "lampSampleStepMetres": 1.0
+  },
   "licence": "Derived from OpenStreetMap data. Open Database License 1.0 (ODbL). © OpenStreetMap contributors.",
   "graph": {
     "path": "data/cork/graph.json",
-    "bytes": 3895018,
-    "sha256": "826246840040582f8ad1aa58fb7015ad2031bf5c4fff35c1c18d8afd480f1964"
+    "bytes": 3781887,
+    "sha256": "805ce6e1d5cd5222295ff397a5baafd0d65660410d52766aa9ca144bcb9bd940"
   },
   "landmarks": [
     {

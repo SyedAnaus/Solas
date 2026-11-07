@@ -5,7 +5,7 @@ import { formatShare } from '../../lib/scoring/percent';
 
 export const LIGHTING_LABELS: Record<LightingClass, { short: string; long: string }> = {
   mapped_lit: { short: 'Mapped lit', long: 'Mapped as lit in OpenStreetMap (lit=yes)' },
-  likely_lit: { short: 'Likely lit', long: 'Within 30 m of a mapped street lamp; inferred, not confirmed' },
+  likely_lit: { short: 'Likely lit', long: 'Near a mapped street lamp; inferred, not confirmed' },
   mapped_unlit: { short: 'Mapped unlit', long: 'Mapped as unlit in OpenStreetMap (lit=no)' },
   unknown: { short: 'Unknown', long: 'No lighting information. This is not the same as dark.' },
 };

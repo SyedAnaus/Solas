@@ -9,6 +9,10 @@ import { validateManifest } from '../../src/data/loadDataset';
 import { haversineM, polylineLengthM } from '../../src/lib/graph/geo';
 import { parseGraph } from '../../src/lib/graph/parse';
 import { RoutingEngine } from '../../src/lib/routing/engine';
+import { ROUTING_CONFIG } from '../../src/config/routing';
+import { routeOverlap } from '../../src/lib/routing/candidates';
+import { planRoutes } from '../../src/lib/routing/planner';
+import { DEFAULT_PREFERENCES } from '../../src/lib/routing/preferences';
 
 // Vitest runs from the project root.
 const file = (name: string) => resolve(process.cwd(), 'public/data/cork', name);
@@ -28,6 +32,14 @@ describe('Cork dataset', () => {
     expect(graph.meta.sources.some((s) => s.name === 'OpenStreetMap' && s.licence === 'ODbL-1.0')).toBe(true);
     expect(graph.nodes.length).toBe(manifest.counts.nodes);
     expect(graph.segments.length).toBe(manifest.counts.segments);
+  });
+
+  it('documents rule, provenance and confidence for every lighting class', () => {
+    for (const cls of ['mapped_lit', 'likely_lit', 'mapped_unlit', 'unknown'] as const) {
+      expect(manifest.lightingClasses?.[cls]?.rule).toBeTruthy();
+      expect(manifest.lightingClasses?.[cls]?.confidence).toBeTruthy();
+    }
+    expect(manifest.parameters?.lampRadiusMetres).toBe(30);
   });
 
   it('lighting classes cover the whole network length', () => {
@@ -77,6 +89,25 @@ describe('UCC Main Quadrangle → Parnell Place Bus Station (fastest)', () => {
       const curStart = pieces[i]!.reversed ? cur.v : cur.u;
       expect(curStart).toBe(prevEnd);
     }
+  });
+
+  it('finds a distinct, meaningfully better-lit alternative within the default cap', () => {
+    const plan = planRoutes(engine, from, to, DEFAULT_PREFERENCES);
+    if (!plan.ok) throw new Error('no plan');
+    const fastest = plan.routes.find((r) => r.id === 'fastest')!;
+    const better = plan.routes.find((r) => r.id === 'better_lit');
+    expect(better, 'real Cork data should support a better-lit option for the demo corridor').toBeDefined();
+    expect(better!.extraS).toBeLessThanOrEqual(DEFAULT_PREFERENCES.maxDetourMin * 60);
+    expect(better!.lighting.litEvidencePct - fastest.lighting.litEvidencePct).toBeGreaterThanOrEqual(ROUTING_CONFIG.lighting.minImprovementPts);
+    expect(better!.lighting.evidenceCoveragePct).toBeGreaterThanOrEqual(ROUTING_CONFIG.lighting.minEvidenceCoveragePct);
+    expect(routeOverlap(graph, fastest.pieces, better!.pieces)).toBeLessThan(ROUTING_CONFIG.duplicateOverlapRatio);
+    // Every likely-lit stretch names real lamps from the dataset.
+    const lampIds = new Set(graph.lamps.map((l) => l.id));
+    for (const s of better!.evidence) {
+      if (s.cls === 'likely_lit') expect(s.lamps!.every((id) => lampIds.has(id))).toBe(true);
+    }
+    const drawn = polylineLengthM(better!.geometry.coordinates);
+    expect(Math.abs(drawn - better!.metrics.distanceM) / better!.metrics.distanceM).toBeLessThan(0.005);
   });
 
   it('computes quickly once the graph is loaded', () => {

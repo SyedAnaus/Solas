@@ -45,13 +45,19 @@ describe('roundSharesToStep', () => {
 
 describe('lighting metres', () => {
   it('splits a mixed segment by fraction', () => {
-    const seg = graph.segments[4]!; // half mapped_lit, half likely_lit
+    const seg = graph.segments[4]!; // half unknown, half likely_lit
     const all = lightingMetresInRange(seg, 0, 1);
-    expect(all.mapped_lit).toBeCloseTo(seg.length / 2, 6);
+    expect(all.unknown).toBeCloseTo(seg.length / 2, 6);
     expect(all.likely_lit).toBeCloseTo(seg.length / 2, 6);
     const part = lightingMetresInRange(seg, 0.25, 0.75);
-    expect(part.mapped_lit).toBeCloseTo(seg.length / 4, 6);
+    expect(part.unknown).toBeCloseTo(seg.length / 4, 6);
     expect(part.likely_lit).toBeCloseTo(seg.length / 4, 6);
+  });
+
+  it('keeps lamp provenance on likely_lit stretches', () => {
+    const seg = graph.segments[4]!;
+    expect(seg.light[1]).toMatchObject({ cls: 'likely_lit', lamps: [9001] });
+    expect(seg.lamps).toEqual([9001]);
   });
 
   it('keeps unknown and mapped_unlit separate in route metrics', () => {

@@ -9,19 +9,25 @@ Solas does **not** promise a "safe" route or a certified accessible route. It re
 OpenStreetMap contributors have mapped, and says clearly where data is missing.
 
 - Live site: https://syedanaus.github.io/Solas/
-- Status: Phases 1–2 done (map, real OSM walking graph, fastest route). See [docs/PLAN.md](docs/PLAN.md).
+- Status: Phases 1–4 done (map, real OSM walking graph, fastest route, better-lit comparison). See [docs/PLAN.md](docs/PLAN.md).
 
 ## Try it
 
 1. Open https://syedanaus.github.io/Solas/ (or `npm run dev`).
 2. Press **Try UCC → Parnell Place**, or pick a start and destination from the verified places,
    or tap the map inside the dashed outline. The location button asks for permission first.
-3. The route card shows estimated time, distance and the lighting evidence along the route.
-4. Links are shareable: `https://syedanaus.github.io/Solas/#from=ucc-quad&to=parnell-place`.
+3. Fastest and better-lit routes appear side by side with time, extra time and lighting evidence.
+   Tap a card to select it; the map highlights it and colours it by lighting evidence.
+4. **Fine-tune** sets the maximum extra time (default 10 min), whether to show one longer
+   alternative (always flagged), and how strongly to weight lighting.
+5. Links are shareable: `https://syedanaus.github.io/Solas/#from=ucc-quad&to=parnell-place`.
 
-Current result for that demo (real OSM data, 7 Nov 2026): **about 29 min, 2.2 km**, of which
-about 30% is mapped lit, 30% likely lit (near mapped lamps), under 5% mapped unlit and 40% has no
-lighting information.
+Current result for that demo (real OSM data, 7 Nov 2026):
+
+| Route | Time | Distance | Mapped or likely lit | No lighting data |
+| --- | --- | --- | --- | --- |
+| Fastest | about 29 min | 2.2 km | 60% | 40% |
+| Better lit | about 32 min (+3 min) | 2.5 km | 90% | 10% |
 
 ## How it works
 
@@ -52,6 +58,30 @@ lighting information.
   non-zero share shows as "<5%", never "0%".
 - **Indoor passages** (`highway=corridor`, `indoor=yes`) are avoided by default, because building
   opening hours are rarely mapped.
+
+### Better lit
+
+Every metre of the network has one of four lighting classes, each with provenance:
+`mapped_lit` (OSM way tagged `lit=yes`; the way ids are kept), `likely_lit` (no tag, but within
+30 m of a mapped street lamp; the lamp node ids are kept per stretch), `mapped_unlit`
+(`lit=no`) and `unknown`. Unknown is never treated as dark.
+
+1. **Candidates.** The same graph is searched several times with different non-negative
+   per-metre multipliers (for example unknown ×1.35–4.5, mapped unlit ×2–9, always more for unlit
+   than unknown). "Lighting emphasis" picks the family of multipliers.
+2. **Deduplicate.** Paths sharing at least 90% of their length with the fastest route or with
+   each other are dropped.
+3. **Judge.** A candidate qualifies only if it (a) adds at most the user's max extra time,
+   (b) raises the mapped-or-likely-lit share by at least 10 percentage points, (c) has lighting
+   evidence on at least 50% of its length, and (d) adds no length mapped as unlit.
+4. **Rank.** Among qualifying candidates: lighting score gain (mapped + 0.6 × likely − unlit)
+   minus 1.5 points per extra minute; ties go to less extra time, less unknown, then a stable path
+   signature.
+5. **Explain.** If nothing qualifies, one route is shown with the reason: same path, gain below
+   the threshold, data too sparse, more unlit, or longer than the limit (with an option to show it).
+
+The 10-point and 10-minute values come from the PRD and are configurable starting heuristics in
+`src/config/routing.ts`, not facts about safety.
 - All tunable numbers are in [`src/config/routing.ts`](src/config/routing.ts).
 
 ## Regenerating the Cork data

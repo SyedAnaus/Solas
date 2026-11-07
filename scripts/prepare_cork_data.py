@@ -372,56 +372,71 @@ def fetch_lamps(polygon_lonlat: Polygon, to_m: Transformer, to_ll: Transformer, 
     return lamps
 
 
-def lamp_intervals(line_m: LineString, tree: shapely.STRtree, radius: float, step: float) -> tuple[list[tuple[float, float]], set[int]]:
-    """Fractions of the line within `radius` metres of any lamp, sampled every `step` metres."""
+def lamp_intervals(
+    line_m: LineString, tree: shapely.STRtree, radius: float, step: float
+) -> list[tuple[float, float, list[int]]]:
+    """
+    Stretches of the line within `radius` metres of at least one lamp, sampled every `step`
+    metres. Each stretch is (from_fraction, to_fraction, lamp indices supporting it), so every
+    "likely lit" stretch can name the lamps it relies on.
+    """
     length = line_m.length
     if length <= 0:
-        return [], set()
+        return []
     n = max(1, int(math.ceil(length / step)))
     bounds = np.minimum(np.arange(n + 1) * step, length)
     mids = (bounds[:-1] + bounds[1:]) / 2.0
     points = shapely.line_interpolate_point(line_m, mids)
     pairs = tree.query(points, predicate="dwithin", distance=radius)
     covered = np.zeros(n, dtype=bool)
-    lamp_idx: set[int] = set()
+    lamps_at: dict[int, set[int]] = defaultdict(set)
     if pairs.size:
         covered[pairs[0]] = True
-        lamp_idx = {int(i) for i in pairs[1]}
+        for sample, lamp in zip(pairs[0].tolist(), pairs[1].tolist()):
+            lamps_at[sample].add(lamp)
     intervals = []
     i = 0
     while i < n:
         if covered[i]:
             j = i
+            support: set[int] = set(lamps_at[i])
             while j + 1 < n and covered[j + 1]:
                 j += 1
-            intervals.append((bounds[i] / length, bounds[j + 1] / length))
+                support |= lamps_at[j]
+            intervals.append((bounds[i] / length, bounds[j + 1] / length, sorted(support)))
             i = j + 1
         else:
             i += 1
-    return intervals, lamp_idx
+    return intervals
 
 
-def lighting_for_segment(lit_class: str | None, lamp_ranges: list[tuple[float, float]]) -> list[list[Any]]:
+def lighting_for_segment(lit_class: str | None, lamp_ranges: list[tuple[float, float, list[int]]]) -> list[list[Any]]:
+    """
+    Lighting stretches as [from, to, class] or, for likely_lit, [from, to, "likely_lit", lamp_ids].
+    Explicit lit tags apply to the whole way; lamps never override an explicit tag.
+    """
     if lit_class is not None:
         return [[0.0, 1.0, lit_class]]
     out: list[list[Any]] = []
     cursor = 0.0
-    for a, b in lamp_ranges:
+    for a, b, lamp_ids in lamp_ranges:
         if a > cursor:
             out.append([cursor, a, "unknown"])
-        out.append([a, b, "likely_lit"])
+        out.append([a, b, "likely_lit", lamp_ids])
         cursor = b
     if cursor < 1.0:
         out.append([cursor, 1.0, "unknown"])
-    # Round and drop slivers created by rounding.
-    rounded = []
-    for a, b, c in out:
-        ra, rb = round(a, 4), round(b, 4)
+    # Round, drop slivers created by rounding, and keep the stretches contiguous.
+    rounded: list[list[Any]] = []
+    for item in out:
+        ra, rb = round(item[0], 4), round(item[1], 4)
         if rb > ra:
-            rounded.append([ra, rb, c])
+            rounded.append([ra, rb, *item[2:]])
     if rounded:
         rounded[0][0] = 0.0
         rounded[-1][1] = 1.0
+        for k in range(1, len(rounded)):
+            rounded[k][0] = rounded[k - 1][1]
     return rounded
 
 
@@ -473,7 +488,8 @@ def run(config_path: Path, out_dir: Path, report_path: Path, refresh: bool) -> N
     highway_metres = Counter()
     steps_count = 0
     exported_edges = []
-    used_lamps: set[int] = set()
+    used_lamps: set[int] = set()  # lamps that support at least one likely_lit stretch
+    near_lamps: set[int] = set()  # lamps within the radius of any segment
     total_m = 0.0
     length_mismatch_max = 0.0
 
@@ -507,15 +523,18 @@ def run(config_path: Path, out_dir: Path, report_path: Path, refresh: bool) -> N
             lit_raw[str(tags["lit"])] += 1
         if note:
             lit_notes[note] += 1
-        lamp_ranges: list[tuple[float, float]] = []
+        lamp_ranges: list[tuple[float, float, list[int]]] = []
         lamp_ids: list[int] = []
         if tree is not None:
-            lamp_ranges, idx = lamp_intervals(line_m, tree, radius, step)
-            lamp_ids = sorted(lamps[i]["id"] for i in idx)
-            used_lamps.update(lamp_ids)
+            raw_ranges = lamp_intervals(line_m, tree, radius, step)
+            lamp_ranges = [(a, b, sorted(lamps[i]["id"] for i in idx)) for a, b, idx in raw_ranges]
+            lamp_ids = sorted({lid for _, _, ids in lamp_ranges for lid in ids})
+            near_lamps.update(lamp_ids)
+            if lit_class is None:
+                used_lamps.update(lamp_ids)
         light = lighting_for_segment(lit_class, lamp_ranges)
-        for a, b, c in light:
-            lighting_m[c] += (b - a) * length
+        for item in light:
+            lighting_m[item[2]] += (item[1] - item[0]) * length
 
         flat = []
         for x, y in seg["coords"]:
@@ -532,8 +551,6 @@ def run(config_path: Path, out_dir: Path, report_path: Path, refresh: bool) -> N
             "light": light,
             "g": flat,
         }
-        if lamp_ids:
-            edge["lamps"] = lamp_ids
         exported_edges.append(edge)
 
     # Nodes ---------------------------------------------------------------------------------
@@ -626,11 +643,18 @@ def run(config_path: Path, out_dir: Path, report_path: Path, refresh: bool) -> N
             "directedEdges": sum(int(e["fwd"]) + int(e["bwd"]) for e in exported_edges),
             "totalLengthM": round(total_m, 1),
             "lampsMapped": len(lamps),
-            "lampsNearNetwork": len(used_lamps),
+            "lampsNearNetwork": len(near_lamps),
+            "lampsUsedAsEvidence": len(used_lamps),
             "stepsSegments": steps_count,
             "landmarks": len(landmarks_out),
         },
         "lightingMetres": lighting_summary,
+        "lightingClasses": {
+            "mapped_lit": {"rule": "Way tagged lit=" + "|".join(sorted(LIT_YES)) + " (part-night values noted)", "provenance": "OSM way ids and their lit tag on the segment", "confidence": "mapped"},
+            "likely_lit": {"rule": f"No lit tag; within {radius:g} m of a mapped highway=street_lamp (sampled every {step:g} m)", "provenance": "OSM street_lamp node ids listed on each stretch", "confidence": "inferred"},
+            "mapped_unlit": {"rule": "Way tagged lit=" + "|".join(sorted(LIT_NO)), "provenance": "OSM way ids and their lit tag on the segment", "confidence": "mapped"},
+            "unknown": {"rule": "No lit tag and no mapped lamp within the radius", "provenance": "none", "confidence": "none"},
+        },
         "lightingNotes": dict(lit_notes),
         "litTagValues": dict(lit_raw),
         "accessibilityTagMetres": {k: round(v, 1) for k, v in sorted(tag_metres.items())},
@@ -673,6 +697,8 @@ def run(config_path: Path, out_dir: Path, report_path: Path, refresh: bool) -> N
         "coverage": meta["coverage"],
         "counts": meta["counts"],
         "lightingMetres": meta["lightingMetres"],
+        "lightingClasses": meta["lightingClasses"],
+        "parameters": {"lampRadiusMetres": radius, "lampSampleStepMetres": step},
         "licence": meta["licence"],
         "graph": {"path": "data/cork/graph.json", "bytes": graph_path.stat().st_size, "sha256": sha256_file(graph_path)},
         "landmarks": landmarks_out,
@@ -725,7 +751,7 @@ def write_report(path: Path, meta: dict, landmarks: list[dict], manifest: dict) 
         "## Lighting evidence (distance-weighted)",
         "",
         f"Lamp radius {meta['parameters']['lampRadiusMetres']} m, sampled every {meta['parameters']['lampSampleStepMetres']} m. "
-        f"{meta['counts']['lampsMapped']} lamps mapped in or near the area; {meta['counts']['lampsNearNetwork']} are within the radius of the network.",
+        f"{meta['counts']['lampsMapped']} lamps mapped in or near the area; {meta['counts']['lampsNearNetwork']} are within the radius of the network; {meta['counts']['lampsUsedAsEvidence']} support likely_lit stretches (lamps next to ways with an explicit lit tag are not needed as evidence).",
         "",
         "| class | metres | share | evidence |",
         "| --- | ---: | ---: | --- |",

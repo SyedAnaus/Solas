@@ -47,7 +47,7 @@ Each segment is split into stretches with one class:
 | Class | Rule | Confidence |
 | --- | --- | --- |
 | `mapped_lit` | The way has `lit=yes`, `24/7`, `automatic`, `sunset-sunrise` or `dusk-dawn`. Part-night values (`limited`, `interval`, time ranges) also count but are noted. | Mapped by a contributor |
-| `likely_lit` | No `lit` tag, and the stretch is within 30 m of a mapped `highway=street_lamp`. Sampled every 1 m, so one lamp only affects about 60 m of path, never a whole long edge. | Inferred |
+| `likely_lit` | No `lit` tag, and the stretch is within 30 m of a mapped `highway=street_lamp`. Sampled every 1 m, so one lamp only affects about 60 m of path, never a whole long edge. Each stretch lists the lamp node ids it relies on. | Inferred |
 | `mapped_unlit` | The way has `lit=no` or `lit=disused`. | Mapped by a contributor |
 | `unknown` | No usable evidence. | None. **Unknown is not the same as dark.** |
 

@@ -32,12 +32,22 @@ function normaliseLight(raw: unknown, edgeId: number): LightingInterval[] {
   const out: LightingInterval[] = [];
   let cursor = 0;
   for (const item of raw as unknown[]) {
-    assert(Array.isArray(item) && item.length === 3, `edge ${edgeId}: malformed lighting interval`);
-    const [from, to, cls] = item as [unknown, unknown, unknown];
+    assert(Array.isArray(item) && (item.length === 3 || item.length === 4), `edge ${edgeId}: malformed lighting interval`);
+    const [from, to, cls, lamps] = item as [unknown, unknown, unknown, unknown];
     assert(typeof from === 'number' && typeof to === 'number' && to >= from, `edge ${edgeId}: bad interval bounds`);
     assert(typeof cls === 'string' && LIGHTING_SET.has(cls), `edge ${edgeId}: unknown lighting class ${String(cls)}`);
     assert(Math.abs(from - cursor) < 1e-3, `edge ${edgeId}: lighting intervals have a gap or overlap`);
-    out.push({ from, to, cls: cls as LightingClass });
+    if (cls === 'likely_lit') {
+      // Inferred lighting must say which lamps it relies on.
+      assert(
+        Array.isArray(lamps) && lamps.length > 0 && lamps.every((id) => Number.isInteger(id)),
+        `edge ${edgeId}: likely_lit stretch has no lamp provenance`,
+      );
+      out.push({ from, to, cls, lamps: lamps as number[] });
+    } else {
+      assert(lamps === undefined, `edge ${edgeId}: only likely_lit stretches carry lamp ids`);
+      out.push({ from, to, cls: cls as LightingClass });
+    }
     cursor = to;
   }
   assert(Math.abs(cursor - 1) < 1e-3, `edge ${edgeId}: lighting intervals do not cover the whole edge`);
@@ -84,6 +94,7 @@ export function parseGraph(input: unknown): PedestrianGraph {
     const endGap = haversineM(coords[coords.length - 1]!, nodes[e.v]!.coord);
     assert(startGap <= END_TOLERANCE_M && endGap <= END_TOLERANCE_M, `edge ${e.id}: geometry does not meet its nodes`);
 
+    const light = normaliseLight(e.light, e.id);
     segments[e.id] = {
       id: e.id,
       u: e.u,
@@ -92,8 +103,8 @@ export function parseGraph(input: unknown): PedestrianGraph {
       coords,
       cumulative: cumulativeDistances(coords, e.len),
       tags: e.tags ?? {},
-      light: normaliseLight(e.light, e.id),
-      lamps: e.lamps ?? [],
+      light,
+      lamps: [...new Set(light.flatMap((l) => l.lamps ?? []))].sort((a, b) => a - b),
       ways: e.ways ?? [],
       forwardAllowed: Boolean(e.fwd),
       backwardAllowed: Boolean(e.bwd),

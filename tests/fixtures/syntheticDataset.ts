@@ -20,6 +20,8 @@ export function buildSyntheticDataset() {
     landmarks: [
       { id: 'syn-a', label: 'Synthetic Point A', category: 'test', osm: 'node/1', labelPoint: NODES.A, routingPoint: NODES.A, routingPointDistanceM: 0 },
       { id: 'syn-c', label: 'Synthetic Point C', category: 'test', osm: 'node/3', labelPoint: NODES.C, routingPoint: NODES.C, routingPointDistanceM: 0 },
+      { id: 'syn-d', label: 'Synthetic Point D', category: 'test', osm: 'node/4', labelPoint: NODES.D, routingPoint: NODES.D, routingPointDistanceM: 0 },
+      { id: 'syn-e', label: 'Synthetic Point E', category: 'test', osm: 'node/5', labelPoint: NODES.E, routingPoint: NODES.E, routingPointDistanceM: 0 },
       { id: 'syn-island', label: 'Synthetic Island', category: 'test', osm: 'node/7', labelPoint: P(350, 300), routingPoint: P(350, 300), routingPointDistanceM: 0 },
     ],
   };
