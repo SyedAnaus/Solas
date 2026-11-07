@@ -5,6 +5,7 @@ import './maplibreWorker';
 import { INITIAL_VIEW, ROUTING_DATA_ATTRIBUTION, type ThemeName } from '../../config/map';
 import { resolveBasemapStyle, type BasemapSource } from './resolveStyle';
 import { MapContext } from './MapContext';
+import { LANDMARK_LAYER_ID } from './overlays/LandmarkOverlay';
 
 export type MapStatus =
   | { kind: 'loading' }
@@ -14,7 +15,7 @@ export type MapStatus =
 interface MapViewProps {
   theme: ThemeName;
   onStatusChange?: (status: MapStatus) => void;
-  onMapClick?: (lngLat: [number, number]) => void;
+  onMapClick?: (lngLat: [number, number], landmarkId?: string) => void;
   /** Accessible description of the map for screen readers. */
   ariaLabel: string;
   children?: ReactNode;
@@ -90,7 +91,20 @@ export function MapView({ theme, onStatusChange, onMapClick, ariaLabel, children
         }
       });
       instance.on('click', (event) => {
-        clickRef.current?.([event.lngLat.lng, event.lngLat.lat]);
+        // A finger-sized box makes small landmark dots easy to hit on touch screens.
+        const { x, y } = event.point;
+        const layers = [LANDMARK_LAYER_ID].filter((id) => instance?.getLayer(id));
+        const hit = layers.length
+          ? instance?.queryRenderedFeatures(
+              [
+                [x - 14, y - 14],
+                [x + 14, y + 14],
+              ],
+              { layers },
+            )[0]
+          : undefined;
+        const landmarkId = typeof hit?.properties?.id === 'string' ? hit.properties.id : undefined;
+        clickRef.current?.([event.lngLat.lng, event.lngLat.lat], landmarkId);
       });
 
       mapRef.current = instance;

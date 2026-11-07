@@ -9,7 +9,19 @@ Solas does **not** promise a "safe" route or a certified accessible route. It re
 OpenStreetMap contributors have mapped, and says clearly where data is missing.
 
 - Live site: https://syedanaus.github.io/Solas/
-- Status: in development (see [docs/PLAN.md](docs/PLAN.md) for phases)
+- Status: Phases 1–2 done (map, real OSM walking graph, fastest route). See [docs/PLAN.md](docs/PLAN.md).
+
+## Try it
+
+1. Open https://syedanaus.github.io/Solas/ (or `npm run dev`).
+2. Press **Try UCC → Parnell Place**, or pick a start and destination from the verified places,
+   or tap the map inside the dashed outline. The location button asks for permission first.
+3. The route card shows estimated time, distance and the lighting evidence along the route.
+4. Links are shareable: `https://syedanaus.github.io/Solas/#from=ucc-quad&to=parnell-place`.
+
+Current result for that demo (real OSM data, 7 Nov 2026): **about 29 min, 2.2 km**, of which
+about 30% is mapped lit, 30% likely lit (near mapped lamps), under 5% mapped unlit and 40% has no
+lighting information.
 
 ## How it works
 
@@ -20,7 +32,43 @@ OpenStreetMap contributors have mapped, and says clearly where data is missing.
   be loaded, Solas tries another, then falls back to a built-in style that shows only its own
   walking network.
 - The walking network is prepared offline from OpenStreetMap by a Python script and committed as
-  static JSON. Routes are computed in the browser.
+  static JSON (`public/data/cork/`). Routes are computed in the browser.
+
+### Routing
+
+- **Graph.** Each OSM path stretch between junctions is a *segment* with its real geometry,
+  length, OSM way ids and tags. Each walkable direction becomes a directed edge, stored in a
+  compact adjacency array.
+- **Snapping.** A tapped point is matched to the nearest point on a walkable segment using a grid
+  index. Points outside the coverage area, or more than 75 m from any walkway, are refused with an
+  explanation rather than guessed.
+- **Search.** A* with a straight-line heuristic (Dijkstra when the heuristic is off). Routes start
+  and end part-way along segments, so the drawn line begins exactly at the chosen point. Costs must
+  be finite and non-negative; hard exclusions (for example, steps in step-free mode) are infinite
+  cost, never a small penalty. If no path exists, Solas says so and draws nothing.
+- **Metrics.** Distance, time (at 1.3 m/s ≈ 4.7 km/h, shown as an estimate) and lighting shares
+  are computed from the same pieces of segment that make up the drawn line. Percentages are
+  distance-weighted and rounded to 5 points with a method that keeps the total at 100; a small
+  non-zero share shows as "<5%", never "0%".
+- **Indoor passages** (`highway=corridor`, `indoor=yes`) are avoided by default, because building
+  opening hours are rarely mapped.
+- All tunable numbers are in [`src/config/routing.ts`](src/config/routing.ts).
+
+## Regenerating the Cork data
+
+Only needed to refresh the data or change the area. Requires Python 3.12 and internet access.
+
+```bash
+uv venv .venv --python 3.12                     # or: python -m venv .venv
+uv pip install --python .venv/Scripts/python.exe -r scripts/requirements.txt   # Windows path
+.venv/Scripts/python.exe scripts/prepare_cork_data.py            # add --refresh to bypass the cache
+```
+
+On macOS/Linux use `.venv/bin/python`. The script retries politely when the public Overpass
+server is busy. It writes `public/data/cork/graph.json`, `public/data/cork/manifest.json` and
+`docs/DATASET_REPORT.md`. If downloads fail it writes nothing and exits with an error; the app then
+shows a "data unavailable" state. Synthetic graphs exist only as test fixtures in `tests/fixtures/`
+and are labelled synthetic. See [DATA_SOURCES.md](DATA_SOURCES.md) for sources and limitations.
 
 ## Requirements
 

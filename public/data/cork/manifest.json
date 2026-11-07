@@ -1,0 +1,294 @@
+{
+  "schema": "solas-manifest",
+  "schemaVersion": 1,
+  "synthetic": false,
+  "areaId": "cork-ucc-parnell",
+  "areaName": "UCC to Parnell Place corridor, Cork City",
+  "generatedAt": "2026-11-07T14:47:52Z",
+  "osmDataTimestamps": [
+    "2026-11-07T14:26:06Z",
+    "2026-11-07T14:27:05Z",
+    "2026-11-07T14:28:06Z",
+    "2026-11-07T14:32:06Z"
+  ],
+  "coverage": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -8.460112,
+          51.889753
+        ],
+        [
+          -8.460252,
+          51.903466
+        ],
+        [
+          -8.498393,
+          51.903311
+        ],
+        [
+          -8.498241,
+          51.889598
+        ],
+        [
+          -8.460112,
+          51.889753
+        ]
+      ]
+    ],
+    "bbox": [
+      -8.498393,
+      51.889598,
+      -8.460112,
+      51.903466
+    ],
+    "method": "Bounding box of anchor landmarks ['ucc-quad', 'parnell-place'] buffered by 400 m in EPSG:2157",
+    "areaKm2": 4.004
+  },
+  "counts": {
+    "nodes": 10205,
+    "segments": 12395,
+    "directedEdges": 24790,
+    "totalLengthM": 201943.6,
+    "lampsMapped": 1347,
+    "lampsNearNetwork": 1279,
+    "stepsSegments": 188,
+    "landmarks": 13
+  },
+  "lightingMetres": {
+    "mapped_lit": 36831.8,
+    "likely_lit": 93909.1,
+    "mapped_unlit": 1134.2,
+    "unknown": 70068.5
+  },
+  "licence": "Derived from OpenStreetMap data. Open Database License 1.0 (ODbL). © OpenStreetMap contributors.",
+  "graph": {
+    "path": "data/cork/graph.json",
+    "bytes": 3895018,
+    "sha256": "826246840040582f8ad1aa58fb7015ad2031bf5c4fff35c1c18d8afd480f1964"
+  },
+  "landmarks": [
+    {
+      "id": "ucc-quad",
+      "label": "UCC Main Quadrangle",
+      "category": "university",
+      "osm": "way/31359035",
+      "osmName": "Main Quadrangle",
+      "labelPoint": [
+        -8.492039,
+        51.893465
+      ],
+      "routingPoint": [
+        -8.492045,
+        51.893463
+      ],
+      "routingPointDistanceM": 0.4,
+      "routingEdgeId": 873
+    },
+    {
+      "id": "parnell-place",
+      "label": "Parnell Place Bus Station",
+      "category": "transport",
+      "osm": "way/552059838",
+      "osmName": "Parnell Place Cork Bus Station",
+      "labelPoint": [
+        -8.466531,
+        51.899528
+      ],
+      "routingPoint": [
+        -8.466524,
+        51.89953
+      ],
+      "routingPointDistanceM": 0.5,
+      "routingEdgeId": 2911
+    },
+    {
+      "id": "city-hall",
+      "label": "Cork City Hall",
+      "category": "civic",
+      "osm": "way/120291202",
+      "osmName": "City Hall",
+      "labelPoint": [
+        -8.465278,
+        51.896899
+      ],
+      "routingPoint": [
+        -8.465212,
+        51.896961
+      ],
+      "routingPointDistanceM": 8.2,
+      "routingEdgeId": 3529
+    },
+    {
+      "id": "english-market",
+      "label": "The English Market",
+      "category": "market",
+      "osm": "way/46791600",
+      "osmName": "English Market",
+      "labelPoint": [
+        -8.474484,
+        51.89774
+      ],
+      "routingPoint": [
+        -8.474507,
+        51.897782
+      ],
+      "routingPointDistanceM": 4.9,
+      "routingEdgeId": 646
+    },
+    {
+      "id": "opera-house",
+      "label": "Cork Opera House",
+      "category": "culture",
+      "osm": "way/54415134",
+      "osmName": "Cork Opera House",
+      "labelPoint": [
+        -8.473076,
+        51.900294
+      ],
+      "routingPoint": [
+        -8.473058,
+        51.900423
+      ],
+      "routingPointDistanceM": 14.4,
+      "routingEdgeId": 6044
+    },
+    {
+      "id": "crawford-gallery",
+      "label": "Crawford Art Gallery",
+      "category": "culture",
+      "osm": "way/174496082",
+      "osmName": "Crawford Art Gallery",
+      "labelPoint": [
+        -8.47329,
+        51.899855
+      ],
+      "routingPoint": [
+        -8.47359,
+        51.899867
+      ],
+      "routingPointDistanceM": 20.7,
+      "routingEdgeId": 4787
+    },
+    {
+      "id": "st-fin-barres",
+      "label": "St Fin Barre's Cathedral",
+      "category": "landmark",
+      "osm": "way/129462199",
+      "osmName": "Saint Fin Barre's Cathedral",
+      "labelPoint": [
+        -8.4805,
+        51.894356
+      ],
+      "routingPoint": [
+        -8.480531,
+        51.894234
+      ],
+      "routingPointDistanceM": 13.7,
+      "routingEdgeId": 2600
+    },
+    {
+      "id": "elizabeth-fort",
+      "label": "Elizabeth Fort",
+      "category": "landmark",
+      "osm": "way/54598301",
+      "osmName": "Elizabeth Fort",
+      "labelPoint": [
+        -8.477958,
+        51.894549
+      ],
+      "routingPoint": [
+        -8.477965,
+        51.89451
+      ],
+      "routingPointDistanceM": 4.4,
+      "routingEdgeId": 9731
+    },
+    {
+      "id": "bishop-lucey-park",
+      "label": "Bishop Lucey Park",
+      "category": "park",
+      "osm": "way/22329196",
+      "osmName": "Bishop Lucey Park",
+      "labelPoint": [
+        -8.476378,
+        51.897148
+      ],
+      "routingPoint": [
+        -8.476374,
+        51.897138
+      ],
+      "routingPointDistanceM": 1.2,
+      "routingEdgeId": 2608
+    },
+    {
+      "id": "mercy-hospital",
+      "label": "Mercy University Hospital",
+      "category": "health",
+      "osm": "way/353427032",
+      "osmName": "Mercy University Hospital",
+      "labelPoint": [
+        -8.48241,
+        51.898928
+      ],
+      "routingPoint": [
+        -8.482463,
+        51.899021
+      ],
+      "routingPointDistanceM": 10.9,
+      "routingEdgeId": 1976
+    },
+    {
+      "id": "glucksman",
+      "label": "Glucksman Gallery (UCC)",
+      "category": "culture",
+      "osm": "way/92914852",
+      "osmName": "Glucksman Gallery",
+      "labelPoint": [
+        -8.49031,
+        51.894701
+      ],
+      "routingPoint": [
+        -8.490347,
+        51.89469
+      ],
+      "routingPointDistanceM": 2.8,
+      "routingEdgeId": 11216
+    },
+    {
+      "id": "boole-library",
+      "label": "Boole Library (UCC)",
+      "category": "university",
+      "osm": "way/79704849",
+      "osmName": "Boole Library",
+      "labelPoint": [
+        -8.491407,
+        51.892796
+      ],
+      "routingPoint": [
+        -8.491241,
+        51.892577
+      ],
+      "routingPointDistanceM": 26.9,
+      "routingEdgeId": 8037
+    },
+    {
+      "id": "fitzgeralds-park",
+      "label": "Fitzgerald's Park",
+      "category": "park",
+      "osm": "way/31310116",
+      "osmName": "Fitzgerald's Park",
+      "labelPoint": [
+        -8.49585,
+        51.895998
+      ],
+      "routingPoint": [
+        -8.495863,
+        51.895999
+      ],
+      "routingPointDistanceM": 0.9,
+      "routingEdgeId": 1047
+    }
+  ]
+}

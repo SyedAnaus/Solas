@@ -161,6 +161,56 @@ body {
   display: none;
 }
 
+/* Keep attribution visible above the mobile results sheet. */
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left {
+  bottom: var(--sheet-offset, 0px);
+  transition: bottom 160ms ease;
+}
+
+/* Phones: pinch to zoom; the planner covers the top-right corner. */
+@media (max-width: 767px) {
+  .maplibregl-ctrl-top-right {
+    display: none;
+  }
+}
+
+.solas-endpoint-marker {
+  width: 34px;
+  height: 40px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.solas-endpoint-pin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  border: 2.5px solid var(--surface);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.35);
+}
+
+.solas-endpoint-pin > span {
+  transform: rotate(45deg);
+  font: 800 13px/1 var(--font-sans);
+}
+
+.solas-endpoint-marker[data-variant='origin'] .solas-endpoint-pin {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.solas-endpoint-marker[data-variant='destination'] .solas-endpoint-pin {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

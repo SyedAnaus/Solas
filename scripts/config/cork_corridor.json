@@ -1,0 +1,29 @@
+{
+  "$comment": "Study area and landmarks for scripts/prepare_cork_data.py. Landmarks are OpenStreetMap elements referenced by type/id; coordinates are always fetched from OSM, never typed in. Element ids were found with Overpass on 2026-11-07.",
+  "areaId": "cork-ucc-parnell",
+  "areaName": "UCC to Parnell Place corridor, Cork City",
+  "anchorLandmarkIds": ["ucc-quad", "parnell-place"],
+  "bufferMetres": 400,
+  "lamp": {
+    "radiusMetres": 30,
+    "sampleStepMetres": 1.0
+  },
+  "projectedCrs": "EPSG:2157",
+  "overpassUrl": "https://overpass-api.de/api",
+  "userAgent": "Solas-dataprep/0.1 (+https://github.com/SyedAnaus/Solas)",
+  "landmarks": [
+    { "id": "ucc-quad", "label": "UCC Main Quadrangle", "category": "university", "osm": "way/31359035" },
+    { "id": "parnell-place", "label": "Parnell Place Bus Station", "category": "transport", "osm": "way/552059838" },
+    { "id": "city-hall", "label": "Cork City Hall", "category": "civic", "osm": "way/120291202" },
+    { "id": "english-market", "label": "The English Market", "category": "market", "osm": "way/46791600" },
+    { "id": "opera-house", "label": "Cork Opera House", "category": "culture", "osm": "way/54415134" },
+    { "id": "crawford-gallery", "label": "Crawford Art Gallery", "category": "culture", "osm": "way/174496082" },
+    { "id": "st-fin-barres", "label": "St Fin Barre's Cathedral", "category": "landmark", "osm": "way/129462199" },
+    { "id": "elizabeth-fort", "label": "Elizabeth Fort", "category": "landmark", "osm": "way/54598301" },
+    { "id": "bishop-lucey-park", "label": "Bishop Lucey Park", "category": "park", "osm": "way/22329196" },
+    { "id": "mercy-hospital", "label": "Mercy University Hospital", "category": "health", "osm": "way/353427032" },
+    { "id": "glucksman", "label": "Glucksman Gallery (UCC)", "category": "culture", "osm": "way/92914852" },
+    { "id": "boole-library", "label": "Boole Library (UCC)", "category": "university", "osm": "way/79704849" },
+    { "id": "fitzgeralds-park", "label": "Fitzgerald's Park", "category": "park", "osm": "way/31310116" }
+  ]
+}

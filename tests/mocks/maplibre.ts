@@ -29,6 +29,27 @@ export class Map {
   addControl() {
     return this;
   }
+  fitBounds(bounds: unknown) {
+    this.lastFit = bounds;
+    return this;
+  }
+  lastFit: unknown = null;
+  getStyle() {
+    return { layers: [] };
+  }
+  getLayer() {
+    return undefined;
+  }
+  getSource() {
+    return undefined;
+  }
+  addSource() {}
+  addLayer() {}
+  removeLayer() {}
+  removeSource() {}
+  queryRenderedFeatures() {
+    return [];
+  }
   setStyle() {}
   remove() {}
 }
@@ -36,3 +57,18 @@ export class Map {
 export class AttributionControl {}
 export class NavigationControl {}
 export function setWorkerUrl(_url: string) {}
+
+export class Marker {
+  static live = 0;
+  setLngLat() {
+    return this;
+  }
+  addTo() {
+    Marker.live += 1;
+    return this;
+  }
+  remove() {
+    Marker.live -= 1;
+    return this;
+  }
+}

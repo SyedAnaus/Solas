@@ -1,0 +1,12 @@
+# Offline data preparation only. Nothing here runs on GitHub Pages.
+# Python 3.12. Install into a local venv:
+#   uv venv .venv --python 3.12   (or: python -m venv .venv)
+#   uv pip install --python .venv/Scripts/python.exe -r scripts/requirements.txt
+osmnx==2.1.1
+geopandas==1.2.0
+shapely==2.2.0
+networkx==3.7
+pyproj==3.8.0
+numpy==2.5.4
+pandas==3.1.0
+requests==2.34.2
