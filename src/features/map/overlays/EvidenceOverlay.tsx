@@ -1,24 +1,17 @@
 import { useMemo } from 'react';
 import type { FeatureCollection } from 'geojson';
-import type { ThemeName } from '../../../config/map';
+import { EVIDENCE } from '../../../config/theme';
 import type { LngLat } from '../../../lib/graph/types';
 import type { RouteCandidate } from '../../../lib/routing/engine';
 import { mergeStretches } from '../../../lib/scoring/evidence';
 import { useGeoJsonLayers, type OverlayLayer } from './useGeoJsonLayers';
 
 /**
- * Lighting evidence drawn inside the selected route line. Each class has its own line pattern
- * (solid, dashed, dark core, dotted) as well as colour, matching the legend in the panel.
+ * Lighting evidence for the selected route, drawn as a navy tube with an inner pattern:
+ * mapped lit = solid yellow, likely lit = mint dashes, unknown = white dots,
+ * mapped unlit = coral core. The patterns match the legend and the bars in the panel.
  */
-export function EvidenceOverlay({
-  route,
-  lampCoords,
-  theme,
-}: {
-  route: RouteCandidate | null;
-  lampCoords: Map<number, LngLat>;
-  theme: ThemeName;
-}) {
+export function EvidenceOverlay({ route, lampCoords }: { route: RouteCandidate | null; lampCoords: Map<number, LngLat> }) {
   const data = useMemo<FeatureCollection>(() => {
     if (!route) return { type: 'FeatureCollection', features: [] };
     const lines = mergeStretches(route.evidence).map((s) => ({
@@ -35,36 +28,41 @@ export function EvidenceOverlay({
     return { type: 'FeatureCollection', features: [...lines, ...lamps] };
   }, [route, lampCoords]);
 
-  const dark = theme === 'dark';
   const layers = useMemo<OverlayLayer[]>(() => {
-    const lineBase = (cls: string, paint: Record<string, unknown>): OverlayLayer =>
+    const inner = (cls: string, paint: Record<string, unknown>, cap: 'butt' | 'round' = 'butt'): OverlayLayer =>
       ({
         id: `solas-evidence-${cls}`,
         type: 'line',
         filter: ['all', ['==', ['get', 'kind'], 'line'], ['==', ['get', 'cls'], cls]],
-        layout: { 'line-join': 'round', 'line-cap': cls === 'unknown' ? 'round' : 'butt' },
+        layout: { 'line-join': 'round', 'line-cap': cap },
         paint,
       }) as OverlayLayer;
     return [
-      lineBase('mapped_lit', { 'line-color': '#f8c15c', 'line-width': 3.5 }),
-      lineBase('likely_lit', { 'line-color': '#f8c15c', 'line-width': 3.5, 'line-dasharray': [1.6, 1.1] }),
-      lineBase('mapped_unlit', { 'line-color': '#05060d', 'line-width': 3.5 }),
-      lineBase('unknown', { 'line-color': dark ? '#e3e6f7' : '#ffffff', 'line-width': 2.6, 'line-dasharray': [0.1, 1.9] }),
+      {
+        id: 'solas-evidence-tube',
+        type: 'line',
+        filter: ['==', ['get', 'kind'], 'line'],
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': EVIDENCE.tube, 'line-width': 9 },
+      },
+      inner('mapped_lit', { 'line-color': EVIDENCE.litYellow, 'line-width': 4.5 }),
+      inner('likely_lit', { 'line-color': EVIDENCE.likelyMint, 'line-width': 4.5, 'line-dasharray': [1.5, 1.2] }),
+      inner('mapped_unlit', { 'line-color': EVIDENCE.unlitCore, 'line-width': 4.5 }),
+      inner('unknown', { 'line-color': EVIDENCE.unknownDot, 'line-width': 3, 'line-dasharray': [0.1, 2] }, 'round'),
       {
         id: 'solas-evidence-lamps',
         type: 'circle',
-        minzoom: 14.5,
+        minzoom: 15,
         filter: ['==', ['get', 'kind'], 'lamp'],
         paint: {
-          'circle-radius': 3,
-          'circle-color': '#f8c15c',
-          'circle-stroke-color': dark ? '#0b1029' : '#5a3d00',
-          'circle-stroke-width': 1,
-          'circle-opacity': 0.9,
+          'circle-radius': 3.5,
+          'circle-color': EVIDENCE.litYellow,
+          'circle-stroke-color': EVIDENCE.tube,
+          'circle-stroke-width': 1.5,
         },
       },
     ];
-  }, [dark]);
+  }, []);
 
   useGeoJsonLayers('solas-evidence', data, layers);
   return null;

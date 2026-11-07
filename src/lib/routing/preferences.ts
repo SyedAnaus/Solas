@@ -33,3 +33,11 @@ export const MODE_LABEL: Record<RouteMode, string> = {
   easier: 'Easier walking',
   step_free: 'Step-free',
 };
+
+/** One line per mode: what the user gets. */
+export const MODE_BENEFIT: Record<RouteMode, string> = {
+  fastest: 'Quickest walk on mapped paths.',
+  better_lit: 'More mapped lighting, within your time limit.',
+  easier: 'Fewer mapped steps and rough surfaces.',
+  step_free: 'Avoids mapped steps and barriers. Not certified accessible.',
+};

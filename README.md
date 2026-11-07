@@ -9,7 +9,7 @@ Solas does **not** promise a "safe" route or a certified accessible route. It re
 OpenStreetMap contributors have mapped, and says clearly where data is missing.
 
 - Live site: https://syedanaus.github.io/Solas/
-- Status: Phases 1–5 done (map, real OSM walking graph, fastest, better-lit, easier and step-free routes). See [docs/PLAN.md](docs/PLAN.md).
+- Status: Phases 1–6 implemented, including the light-only responsive interface and browser accessibility checks. See [docs/PLAN.md](docs/PLAN.md) and [the Phase 6 audit](docs/PHASE6_AUDIT.md).
 
 ## Try it
 
@@ -20,10 +20,18 @@ OpenStreetMap contributors have mapped, and says clearly where data is missing.
    Tap a card to select it; the map highlights it and colours it by lighting evidence.
 4. **Route preference** picks what Solas recommends: Fastest, Better lit, Easier or Step-free.
    The fastest route is always shown alongside for comparison.
-5. **Fine-tune** sets the maximum extra time (default 10 min), whether to show one longer
+5. **Options** sets the maximum extra time (default 10 min), whether to show one longer
    alternative (always flagged), Avoid steps, Prefer smoother surfaces and lighting emphasis.
    "Prefer gentler slopes" is shown but disabled, because there is no trustworthy elevation data.
 6. Links are shareable: `https://syedanaus.github.io/Solas/#from=ucc-quad&to=parnell-place`.
+7. Open **Route details** for lighting sources, steps and data gaps. **About Solas** contains
+   coverage, limitations and reduced-motion settings. The interface stays light regardless of
+   the device theme, keeping map and route colours consistent.
+
+On phones, tap or drag the sheet handle between collapsed, half-height and expanded views;
+the arrow keys also resize it. At tablet and desktop widths the planner becomes a side panel.
+Slate and orange identify route tracks; a dark outline and check mark identify the selected card.
+Lighting evidence uses separate yellow, mint, coral and white marks, with patterns and text labels.
 
 Current result for that demo (real OSM data, 7 Nov 2026):
 
@@ -143,6 +151,8 @@ npm run dev            # dev server at http://localhost:5173/Solas/
 npm run typecheck      # TypeScript, strict mode
 npm run lint           # ESLint
 npm test               # Vitest unit and component tests
+npx playwright install chromium # first-time browser installation
+npm run test:e2e        # 360 / 390 px phones, tablets and desktop; axe accessibility checks
 npm run build          # production build into dist/ (also writes dist/404.html)
 npm run check:dist     # verify base paths and scan dist/ for credential patterns
 npm run preview        # serve dist/ at http://localhost:4173/Solas/
@@ -155,7 +165,7 @@ listed explicitly in `package.json`.
 
 ## Deploying to GitHub Pages
 
-Deployment is automatic: `.github/workflows/deploy.yml` runs typecheck, lint, tests, build and the
+Deployment is automatic: `.github/workflows/deploy.yml` runs typecheck, lint, unit/component and responsive browser tests, build and the
 `dist/` check on every push and pull request, and deploys `dist/` to GitHub Pages on pushes to
 `main`.
 

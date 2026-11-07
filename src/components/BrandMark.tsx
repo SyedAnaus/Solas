@@ -1,20 +1,19 @@
 import { useId } from 'react';
 
-/** Solas logo: a lamp glow over a footpath arc. Decorative; the wordmark carries the name. */
-export function BrandMark({ size = 36 }: { size?: number }) {
+/** Solas mark: a lamp (Pow Orange) above a footpath arc (Bright Slate). Decorative. */
+export function BrandMark({ size = 32 }: { size?: number }) {
   const gradientId = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false">
       <defs>
-        <radialGradient id={gradientId} cx="50%" cy="42%" r="60%">
-          <stop offset="0" stopColor="#ffe2a3" />
-          <stop offset="0.45" stopColor="#f8c15c" />
-          <stop offset="1" stopColor="#9d7bff" />
-        </radialGradient>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#D3D9EB" />
+          <stop offset="1" stopColor="#EBE5D3" />
+        </linearGradient>
       </defs>
-      <rect width="64" height="64" rx="16" fill="#0b1029" />
-      <circle cx="32" cy="27" r="11" fill={`url(#${gradientId})`} />
-      <path d="M14 50c6-6 12-8 18-8s12 2 18 8" fill="none" stroke="#b79cff" strokeWidth="4.5" strokeLinecap="round" />
+      <rect width="64" height="64" rx="16" fill={`url(#${gradientId})`} />
+      <circle cx="32" cy="25" r="10" fill="#E05320" />
+      <path d="M13 50c6-6.5 12.4-9.5 19-9.5S45 43.5 51 50" fill="none" stroke="#3B4497" strokeWidth="5" strokeLinecap="round" />
     </svg>
   );
 }

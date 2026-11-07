@@ -1,6 +1,6 @@
 import { useId } from 'react';
 
-/** Accessible on/off switch with a visible label and optional explanation. */
+/** iOS-style switch with a visible label and optional explanation. The whole row is clickable. */
 export function Switch({
   label,
   description,
@@ -16,38 +16,39 @@ export function Switch({
 }) {
   const id = useId();
   return (
-    <div className={`flex items-start gap-3 ${disabled ? 'opacity-60' : ''}`}>
-      <div className="min-w-0 flex-1">
-        <label htmlFor={id} className="block text-sm font-semibold text-ink">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-labelledby={id}
+      aria-describedby={description ? `${id}-desc` : undefined}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className="flex min-h-11 w-full items-center gap-3 rounded-lg py-1 text-left disabled:cursor-not-allowed disabled:opacity-55"
+    >
+      <span className="min-w-0 flex-1">
+        <span id={id} className="block text-[15px] font-medium text-ink">
           {label}
-        </label>
+        </span>
         {description && (
-          <p id={`${id}-desc`} className="mt-0.5 text-xs leading-snug text-ink-subtle">
+          <span id={`${id}-desc`} className="mt-0.5 block text-[12.5px] leading-snug text-ink-3">
             {description}
-          </p>
+          </span>
         )}
-      </div>
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-describedby={description ? `${id}-desc` : undefined}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={`relative mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors disabled:cursor-not-allowed ${
-          checked ? 'border-accent bg-accent' : 'border-line-strong bg-surface-raised'
+      </span>
+      <span
+        aria-hidden="true"
+        className={`relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full transition-colors duration-200 ${
+          checked ? 'bg-slate' : 'bg-[#cfd3e3]'
         }`}
       >
         <span
           aria-hidden="true"
-          className={`inline-flex size-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#121633] shadow transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
+          className={`inline-block size-[27px] rounded-full bg-white shadow-[0_2px_6px_rgb(31_35_80/0.25)] transition-transform duration-200 ${
+            checked ? 'translate-x-[22px]' : 'translate-x-[2px]'
           }`}
-        >
-          {checked ? 'on' : ''}
-        </span>
-      </button>
-    </div>
+        />
+      </span>
+    </button>
   );
 }

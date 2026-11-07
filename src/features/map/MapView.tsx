@@ -2,47 +2,50 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AttributionControl, Map as MapLibreMap, NavigationControl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './maplibreWorker';
-import { INITIAL_VIEW, ROUTING_DATA_ATTRIBUTION, type ThemeName } from '../../config/map';
+import { INITIAL_VIEW, ROUTING_DATA_ATTRIBUTION } from '../../config/map';
 import { resolveBasemapStyle, type BasemapSource } from './resolveStyle';
 import { MapContext } from './MapContext';
 import { LANDMARK_LAYER_ID } from './overlays/LandmarkOverlay';
+import { ROUTE_HIT_LAYER_ID } from './overlays/RouteOverlay';
 
 export type MapStatus =
   | { kind: 'loading' }
   | { kind: 'ready'; basemap: BasemapSource; warnings: string[]; tilesDegraded: boolean }
   | { kind: 'unsupported'; message: string };
 
+export interface MapHit {
+  landmarkId?: string;
+  routeId?: string;
+}
+
 interface MapViewProps {
-  theme: ThemeName;
   onStatusChange?: (status: MapStatus) => void;
-  onMapClick?: (lngLat: [number, number], landmarkId?: string) => void;
+  onMapClick?: (lngLat: [number, number], hit: MapHit) => void;
   /** Accessible description of the map for screen readers. */
   ariaLabel: string;
   children?: ReactNode;
 }
 
-export function MapView({ theme, onStatusChange, onMapClick, ariaLabel, children }: MapViewProps) {
+const HIT_LAYERS = [LANDMARK_LAYER_ID, ROUTE_HIT_LAYER_ID];
+
+export function MapView({ onStatusChange, onMapClick, ariaLabel, children }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapLibreMap | null>(null);
-  const themeRef = useRef(theme);
   const statusRef = useRef(onStatusChange);
   const clickRef = useRef(onMapClick);
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [styleVersion, setStyleVersion] = useState(0);
-  const basemapRef = useRef<{ source: BasemapSource; warnings: string[]; tilesDegraded: boolean } | null>(null);
 
   useEffect(() => {
     statusRef.current = onStatusChange;
     clickRef.current = onMapClick;
   });
 
-  // Create the map once.
   useEffect(() => {
     let cancelled = false;
     let instance: MapLibreMap | null = null;
     statusRef.current?.({ kind: 'loading' });
 
-    void resolveBasemapStyle(themeRef.current).then((resolved) => {
+    void resolveBasemapStyle().then((resolved) => {
       if (cancelled || !containerRef.current) return;
       try {
         instance = new MapLibreMap({
@@ -54,91 +57,71 @@ export function MapView({ theme, onStatusChange, onMapClick, ariaLabel, children
           dragRotate: false,
           pitchWithRotate: false,
           touchPitch: false,
-          cooperativeGestures: false,
         });
       } catch (error) {
         statusRef.current?.({
           kind: 'unsupported',
           message:
             error instanceof Error && /webgl/i.test(error.message)
-              ? 'This browser or device cannot draw the map (WebGL is unavailable).'
-              : 'The map could not start on this device.',
+              ? 'This browser or device cannot draw the map (WebGL is unavailable). Routes can still be planned from the list.'
+              : 'The map could not start on this device. Routes can still be planned from the list.',
         });
         return;
       }
 
-      basemapRef.current = { source: resolved.source, warnings: resolved.warnings, tilesDegraded: false };
+      const basemap = { source: resolved.source, warnings: resolved.warnings, tilesDegraded: false };
       instance.addControl(new AttributionControl({ compact: false, customAttribution: ROUTING_DATA_ATTRIBUTION }), 'bottom-right');
       instance.addControl(new NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right');
       instance.touchZoomRotate.disableRotation();
+      const emitReady = () => statusRef.current?.({ kind: 'ready', basemap: basemap.source, warnings: basemap.warnings, tilesDegraded: basemap.tilesDegraded });
 
-      const emitReady = () => {
-        const b = basemapRef.current;
-        if (b) statusRef.current?.({ kind: 'ready', basemap: b.source, warnings: b.warnings, tilesDegraded: b.tilesDegraded });
-      };
-
-      instance.on('style.load', () => {
-        setStyleVersion((v) => v + 1);
-      });
+      instance.on('style.load', () => setStyleVersion((v) => v + 1));
       instance.on('load', emitReady);
       instance.on('error', (event) => {
-        // Tile or source failures should not break routing; flag them once.
-        const b = basemapRef.current;
         const sourceId = (event as { sourceId?: string }).sourceId;
-        if (b && sourceId && !b.tilesDegraded) {
-          b.tilesDegraded = true;
+        if (sourceId && !sourceId.startsWith('solas-') && !basemap.tilesDegraded) {
+          basemap.tilesDegraded = true;
           emitReady();
         }
       });
       instance.on('click', (event) => {
-        // A finger-sized box makes small landmark dots easy to hit on touch screens.
+        // A finger-sized box makes thin lines and small dots easy to hit on touch screens.
         const { x, y } = event.point;
-        const layers = [LANDMARK_LAYER_ID].filter((id) => instance?.getLayer(id));
-        const hit = layers.length
-          ? instance?.queryRenderedFeatures(
+        const layers = HIT_LAYERS.filter((id) => instance?.getLayer(id));
+        const features = layers.length
+          ? (instance?.queryRenderedFeatures(
               [
                 [x - 14, y - 14],
                 [x + 14, y + 14],
               ],
               { layers },
-            )[0]
-          : undefined;
-        const landmarkId = typeof hit?.properties?.id === 'string' ? hit.properties.id : undefined;
-        clickRef.current?.([event.lngLat.lng, event.lngLat.lat], landmarkId);
+            ) ?? [])
+          : [];
+        const hit: MapHit = {};
+        for (const f of features) {
+          const id = f.properties?.id;
+          if (typeof id !== 'string') continue;
+          if (f.layer.id === LANDMARK_LAYER_ID && !hit.landmarkId) hit.landmarkId = id;
+          if (f.layer.id === ROUTE_HIT_LAYER_ID && !hit.routeId) hit.routeId = id;
+        }
+        clickRef.current?.([event.lngLat.lng, event.lngLat.lat], hit);
+      });
+      instance.on('mousemove', (event) => {
+        const layers = HIT_LAYERS.filter((id) => instance?.getLayer(id));
+        if (!layers.length || !instance) return;
+        const over = instance.queryRenderedFeatures(event.point, { layers }).length > 0;
+        instance.getCanvas().style.cursor = over ? 'pointer' : '';
       });
 
-      mapRef.current = instance;
       setMap(instance);
     });
 
     return () => {
       cancelled = true;
       instance?.remove();
-      mapRef.current = null;
       setMap(null);
     };
   }, []);
-
-  // Switch basemap when the theme changes.
-  useEffect(() => {
-    if (themeRef.current === theme) return;
-    themeRef.current = theme;
-    const instance = mapRef.current;
-    if (!instance) return;
-    let cancelled = false;
-    void resolveBasemapStyle(theme).then((resolved) => {
-      if (cancelled || mapRef.current !== instance) return;
-      basemapRef.current = { source: resolved.source, warnings: resolved.warnings, tilesDegraded: false };
-      instance.setStyle(resolved.style, { diff: false });
-      instance.once('style.load', () => {
-        const b = basemapRef.current;
-        if (b) statusRef.current?.({ kind: 'ready', basemap: b.source, warnings: b.warnings, tilesDegraded: false });
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [theme]);
 
   return (
     <MapContext.Provider value={{ map, styleVersion }}>

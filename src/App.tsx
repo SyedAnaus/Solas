@@ -1,44 +1,55 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, Moon, Pencil, Sun } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronRight, Info, Loader2, X } from 'lucide-react';
 import { BrandMark } from './components/BrandMark';
 import { IconButton } from './components/IconButton';
 import { Notice } from './components/Notice';
-import { MapView, type MapStatus } from './features/map/MapView';
+import { MapView, type MapHit, type MapStatus } from './features/map/MapView';
 import { CoverageOverlay } from './features/map/overlays/CoverageOverlay';
 import { LandmarkOverlay } from './features/map/overlays/LandmarkOverlay';
 import { RouteOverlay } from './features/map/overlays/RouteOverlay';
+import { RouteCallouts } from './features/map/overlays/RouteCallouts';
 import { EvidenceOverlay } from './features/map/overlays/EvidenceOverlay';
 import { EndpointMarker } from './features/map/overlays/EndpointMarkers';
 import { FitToBounds, FitToRoute } from './features/map/overlays/CameraEffects';
 import { clampPadding, type Padding } from './features/map/camera';
-import { EndpointField } from './features/planner/EndpointField';
-import {
-  endpointsFromHash,
-  endpointsToHash,
-  landmarkEndpoint,
-  mapEndpoint,
-  type Endpoint,
-  type EndpointRole,
-} from './features/planner/endpoints';
-import { FineTune, ModeSelector } from './features/preferences/PreferencePanel';
+import { AboutDialog } from './features/layout/AboutDialog';
+import { BottomSheet, type Detent } from './features/layout/BottomSheet';
+import { EvidenceLegend } from './features/layout/EvidenceLegend';
+import { MapControls } from './features/layout/MapControls';
+import { EndpointsCard } from './features/planner/EndpointsCard';
+import { endpointsFromHash, endpointsToHash, landmarkEndpoint, mapEndpoint, type Endpoint, type EndpointRole } from './features/planner/endpoints';
+import { ModeSelector } from './features/preferences/PreferencePanel';
+import { announcePlan } from './features/routes/announce';
 import { ResultsPanel } from './features/routes/ResultsPanel';
+import { RouteDetailsView } from './features/routes/RouteDetailsView';
+import { routeTitle } from './features/routes/routeText';
 import { useDataset } from './hooks/useDataset';
-import { useElementHeight } from './hooks/useElementHeight';
 import { useGeolocation } from './hooks/useGeolocation';
-import { useIsDesktop, usePrefersReducedMotion } from './hooks/useMediaQuery';
-import { useTheme } from './hooks/useTheme';
+import { useMediaQuery } from './hooks/useMediaQuery';
+import { useMotionPreference } from './hooks/useMotionPreference';
+import { formatDistance, formatDuration } from './lib/format';
 import type { LngLat } from './lib/graph/types';
+import { extraTimeText } from './lib/routing/explain';
 import { planRoutes, type PlanResult } from './lib/routing/planner';
-import { DEFAULT_PREFERENCES, type RouteMode, type RoutePreferences } from './lib/routing/preferences';
+import { DEFAULT_PREFERENCES, type RoutePreferences } from './lib/routing/preferences';
 
-const DESKTOP_PANEL_WIDTH = 440;
-/** Modes the planner implements in this build. */
-const AVAILABLE_MODES: RouteMode[] = ['fastest', 'better_lit', 'easier', 'step_free'];
+type View = 'plan' | 'details';
+
+/** The legend is drawn whenever lighting evidence is on, so the camera leaves room for it. */
+const showLegendFor = (evidenceOn: boolean) => evidenceOn;
 
 export default function App() {
-  const { theme, toggleTheme } = useTheme();
-  const isDesktop = useIsDesktop();
-  const reduceMotion = usePrefersReducedMotion();
+  const isPanel = useMediaQuery('(min-width: 768px)');
+  const isWide = useMediaQuery('(min-width: 1024px)');
+  const panelW = isWide ? 400 : 360;
+  const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+  useEffect(() => {
+    const resize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
+  const restoreDetailsFocus = useRef(false);
+  const { reduceMotion, systemReduce, setUserReduce } = useMotionPreference();
   const [mapStatus, setMapStatus] = useState<MapStatus>({ kind: 'loading' });
   const { state: dataset, retry } = useDataset();
   const manifest = dataset.status === 'loading-manifest' ? null : (dataset.manifest ?? null);
@@ -51,12 +62,15 @@ export default function App() {
   const [explicitPick, setExplicitPick] = useState<EndpointRole | null>(null);
   const [inputNotice, setInputNotice] = useState<{ role: EndpointRole; message: string } | null>(null);
   const [prefs, setPrefs] = useState<RoutePreferences>(DEFAULT_PREFERENCES);
-  const [showEvidence, setShowEvidence] = useState(true);
-  const [editingEndpoints, setEditingEndpoints] = useState(false);
+  const [evidenceOn, setEvidenceOn] = useState(DEFAULT_PREFERENCES.mode === 'better_lit');
+  const [detent, setDetent] = useState<Detent>('medium');
+  const [sheetPx, setSheetPx] = useState(0);
+  const [legendPx, setLegendPx] = useState(0);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [fitNonce, setFitNonce] = useState(0);
   const { locating, locate } = useGeolocation();
 
-  // Restore endpoints from a shared link once landmarks are known (adjusting state during render,
-  // as React recommends for derived state), then mirror changes to the URL hash.
+  // Restore endpoints from a shared link once landmarks are known; mirror changes to the hash.
   const [hydrated, setHydrated] = useState(false);
   if (manifest && !hydrated) {
     setHydrated(true);
@@ -66,10 +80,8 @@ export default function App() {
   }
   useEffect(() => {
     if (!hydrated) return;
-    const hash = endpointsToHash(origin, destination);
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${endpointsToHash(origin, destination)}`);
   }, [hydrated, origin, destination]);
-  // A link pasted into an already-open tab changes only the hash; follow it.
   useEffect(() => {
     if (!manifest) return;
     const onHashChange = () => {
@@ -84,11 +96,28 @@ export default function App() {
 
   const pickTarget: EndpointRole | null = engine ? (explicitPick ?? (!origin ? 'origin' : !destination ? 'destination' : null)) : null;
 
+  // Escape cancels an explicit "choose on map".
+  useEffect(() => {
+    if (!explicitPick) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setExplicitPick(null);
+      if (!isPanel) setDetent('medium');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [explicitPick, isPanel]);
+
   const setEndpoint = useCallback((role: EndpointRole, endpoint: Endpoint | null) => {
     if (role === 'origin') setOrigin(endpoint);
     else setDestination(endpoint);
     setInputNotice(null);
   }, []);
+
+  const afterPick = useCallback(() => {
+    setExplicitPick(null);
+    if (!isPanel) setDetent('medium');
+  }, [isPanel]);
 
   const trySetPoint = useCallback(
     (role: EndpointRole, point: LngLat, make: () => Endpoint) => {
@@ -99,26 +128,58 @@ export default function App() {
         return;
       }
       setEndpoint(role, make());
-      setExplicitPick(null);
+      afterPick();
     },
-    [engine, setEndpoint],
+    [engine, setEndpoint, afterPick],
   );
+
+  const outcome: PlanResult | null = useMemo(
+    () => (engine && origin && destination ? planRoutes(engine, origin.point, destination.point, prefs) : null),
+    [engine, origin, destination, prefs],
+  );
+  const routes = useMemo(() => (outcome?.ok ? outcome.routes : []), [outcome]);
+
+  // Selection and view follow each new plan; the user's explicit choice holds until the plan changes.
+  const [choice, setChoice] = useState<{ plan: PlanResult | null; id: string | null; view: View }>({ plan: null, id: null, view: 'plan' });
+  if (choice.plan !== outcome) setChoice({ plan: outcome, id: null, view: 'plan' });
+  const recommendedId = outcome?.ok ? outcome.recommendedId : null;
+  const selected = routes.find((r) => r.id === choice.id) ?? routes.find((r) => r.id === recommendedId) ?? routes[0] ?? null;
+  const view: View = selected ? choice.view : 'plan';
+  const selectRoute = useCallback((id: string) => setChoice((c) => ({ ...c, id })), []);
+  const openDetails = () => {
+    setChoice((c) => ({ ...c, view: 'details' }));
+    if (!isPanel) setDetent('large');
+  };
+  const closeDetails = () => {
+    restoreDetailsFocus.current = true;
+    setChoice((c) => ({ ...c, view: 'plan' }));
+    if (!isPanel) setDetent('medium');
+  };
+  useEffect(() => {
+    if (view === 'plan' && restoreDetailsFocus.current) {
+      restoreDetailsFocus.current = false;
+      document.getElementById('route-details-button')?.focus();
+    }
+  }, [view]);
 
   const onMapClick = useCallback(
-    (lngLat: [number, number], landmarkId?: string) => {
-      if (!pickTarget) return;
-      const lm = landmarkId ? landmarks.find((l) => l.id === landmarkId) : undefined;
-      if (lm) {
-        setEndpoint(pickTarget, landmarkEndpoint(lm));
-        setExplicitPick(null);
+    (lngLat: [number, number], hit: MapHit) => {
+      if (pickTarget) {
+        const lm = hit.landmarkId ? landmarks.find((l) => l.id === hit.landmarkId) : undefined;
+        if (lm) {
+          setEndpoint(pickTarget, landmarkEndpoint(lm));
+          afterPick();
+          return;
+        }
+        trySetPoint(pickTarget, lngLat, () => mapEndpoint(lngLat));
         return;
       }
-      trySetPoint(pickTarget, lngLat, () => mapEndpoint(lngLat));
+      if (hit.routeId) selectRoute(hit.routeId);
     },
-    [pickTarget, landmarks, setEndpoint, trySetPoint],
+    [pickTarget, landmarks, setEndpoint, afterPick, trySetPoint, selectRoute],
   );
 
-  const onUseLocation = useCallback(async () => {
+  const onLocate = useCallback(async () => {
     const result = await locate();
     if (!result.ok) {
       setInputNotice({ role: 'origin', message: result.message });
@@ -127,67 +188,76 @@ export default function App() {
     trySetPoint('origin', result.point, () => ({ kind: 'location', point: result.point, label: 'My location', accuracyM: result.accuracyM }));
   }, [locate, trySetPoint]);
 
-  const swap = () => {
-    setOrigin(destination);
-    setDestination(origin);
-    setInputNotice(null);
+  const onPick = (role: EndpointRole) => {
+    setExplicitPick(role);
+    if (!isPanel) setDetent('peek');
+  };
+
+  const onPrefs = (next: RoutePreferences) => {
+    if (next.mode !== prefs.mode) setEvidenceOn(next.mode === 'better_lit');
+    setPrefs(next);
   };
 
   const tryDemo = () => {
     const a = landmarks.find((l) => l.id === 'ucc-quad');
     const b = landmarks.find((l) => l.id === 'parnell-place');
-    if (a && b) {
-      setOrigin(landmarkEndpoint(a));
-      setDestination(landmarkEndpoint(b));
-      setExplicitPick(null);
-      setInputNotice(null);
-    }
+    if (!a || !b) return;
+    setOrigin(landmarkEndpoint(a));
+    setDestination(landmarkEndpoint(b));
+    setExplicitPick(null);
+    setInputNotice(null);
   };
 
-  const outcome: PlanResult | null = useMemo(
-    () => (engine && origin && destination ? planRoutes(engine, origin.point, destination.point, prefs) : null),
-    [engine, origin, destination, prefs],
-  );
-  const routes = useMemo(() => (outcome?.ok ? outcome.routes : []), [outcome]);
-
-  // Selection follows the recommendation whenever the plan changes (new endpoints or preferences),
-  // and the user's explicit choice otherwise.
-  const [choice, setChoice] = useState<{ plan: PlanResult | null; id: string | null }>({ plan: null, id: null });
-  if (choice.plan !== outcome) setChoice({ plan: outcome, id: null });
-  const recommendedId = outcome?.ok ? outcome.recommendedId : null;
-  const selected = routes.find((r) => r.id === choice.id) ?? routes.find((r) => r.id === recommendedId) ?? routes[0] ?? null;
-  const selectRoute = (id: string) => setChoice({ plan: outcome, id });
-
-  const fieldError = (role: EndpointRole): string | null => {
-    if (inputNotice?.role === role) return inputNotice.message;
-    if (outcome && !outcome.ok && outcome.error.kind === 'snap' && outcome.error.which === role) return outcome.error.failure.message;
-    return null;
+  const errors = {
+    origin: inputNotice?.role === 'origin' ? inputNotice.message : outcome && !outcome.ok && outcome.error.kind === 'snap' && outcome.error.which === 'origin' ? outcome.error.failure.message : null,
+    destination:
+      inputNotice?.role === 'destination' ? inputNotice.message : outcome && !outcome.ok && outcome.error.kind === 'snap' && outcome.error.which === 'destination' ? outcome.error.failure.message : null,
   };
 
-  // Layout measurements keep routes clear of the floating panels.
-  const [panelRef, panelHeight] = useElementHeight<HTMLDivElement>();
-  const [sheetRef, sheetHeight] = useElementHeight<HTMLDivElement>();
+  // Map insets keep routes clear of the panel, the sheet, the brand pill and the controls.
   useEffect(() => {
-    document.documentElement.style.setProperty('--sheet-offset', isDesktop ? '0px' : `${Math.round(sheetHeight)}px`);
-  }, [isDesktop, sheetHeight]);
-  const viewport = { w: typeof window !== 'undefined' ? window.innerWidth : 1024, h: typeof window !== 'undefined' ? window.innerHeight : 768 };
+    document.documentElement.style.setProperty('--map-bottom-inset', isPanel ? '0px' : `${Math.round(sheetPx)}px`);
+  }, [isPanel, sheetPx]);
+  const { width: vw, height: vh } = viewport;
   const padding: Padding = clampPadding(
-    isDesktop
-      ? { top: 48, bottom: 48, left: DESKTOP_PANEL_WIDTH + 48, right: 72 }
-      : { top: panelHeight + 28, bottom: sheetHeight + 28, left: 28, right: 28 },
-    viewport.w,
-    viewport.h,
+    isPanel
+      ? { top: 40, bottom: showLegendFor(evidenceOn) ? Math.max(120, legendPx + 56) : 40, left: panelW + 40, right: 76 }
+      : { top: showLegendFor(evidenceOn) ? Math.max(128, legendPx + 88) : 84, bottom: sheetPx + 48, left: 24, right: 64 },
+    vw,
+    vh,
   );
 
-  const compactPlanner = !isDesktop && Boolean(origin && destination) && !editingEndpoints && outcome?.ok === true;
+  const announcement = announcePlan(outcome, selected?.id ?? null);
+  const showLegend = evidenceOn && Boolean(selected) && (isPanel || detent !== 'large');
 
-  const results = (
-    <div className="space-y-3">
-      {engine && origin && destination && (
-        <>
-          <ModeSelector prefs={prefs} onChange={setPrefs} availableModes={AVAILABLE_MODES} />
-          <FineTune prefs={prefs} onChange={setPrefs} />
-        </>
+  const planContent = (
+    <div className="space-y-4">
+      <EndpointsCard
+        origin={origin}
+        destination={destination}
+        landmarks={landmarks}
+        disabled={!engine}
+        pickTarget={pickTarget}
+        locating={locating}
+        errors={errors}
+        onChange={setEndpoint}
+        onPick={onPick}
+        onLocate={onLocate}
+        onSwap={() => {
+          setOrigin(destination);
+          setDestination(origin);
+          setInputNotice(null);
+        }}
+      />
+      {engine && origin && destination && <ModeSelector prefs={prefs} onChange={onPrefs} />}
+      {mapStatus.kind === 'unsupported' && <Notice tone="error">{mapStatus.message}</Notice>}
+      {mapStatus.kind === 'ready' && mapStatus.basemap.kind === 'offline' && (
+        <Notice tone="warning" title="Basemap unavailable">
+          Map tiles could not be loaded, so only Solas&apos;s own data is shown. Routes still work.
+        </Notice>
+      )}
+      {mapStatus.kind === 'ready' && mapStatus.tilesDegraded && mapStatus.basemap.kind === 'remote' && (
+        <Notice tone="warning">Some map tiles failed to load. Routes are unaffected.</Notice>
       )}
       <ResultsPanel
         dataset={dataset}
@@ -195,162 +265,168 @@ export default function App() {
         hasEndpoints={Boolean(origin && destination)}
         outcome={outcome}
         selectedId={selected?.id ?? null}
+        mode={prefs.mode}
         onSelect={selectRoute}
+        onOpenDetails={openDetails}
         onTryDemo={landmarks.some((l) => l.id === 'ucc-quad') ? tryDemo : undefined}
-        showEvidenceOnMap={showEvidence}
-        onToggleEvidence={setShowEvidence}
       />
     </div>
   );
 
+  const content =
+    view === 'details' && selected && manifest && outcome?.ok ? (
+      <RouteDetailsView route={selected} manifest={manifest} mode={prefs.mode} onBack={closeDetails} />
+    ) : (
+      planContent
+    );
+
+  const sheetHeader = explicitPick ? (
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-[17px] font-semibold text-ink">Tap the map to set your {explicitPick === 'origin' ? 'start' : 'destination'}</p>
+        <p className="text-[13px] text-ink-2">Anywhere inside the dashed area.</p>
+      </div>
+      <button type="button" onClick={() => { setExplicitPick(null); setDetent('medium'); }} className="pressable min-h-11 rounded-full bg-fill px-4 text-[14px] font-semibold text-ink">
+        Cancel
+      </button>
+    </div>
+  ) : dataset.status === 'loading-manifest' || dataset.status === 'loading-graph' ? (
+    <p className="flex min-h-11 items-center gap-2 text-[15px] font-semibold text-ink">
+      <Loader2 className="size-4 animate-spin text-slate" aria-hidden="true" /> Loading Cork walking data…
+    </p>
+  ) : selected ? (
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="tnum truncate text-[17px] font-semibold text-ink">
+          {formatDuration(selected.metrics.durationS)} · {routeTitle(selected)}
+        </p>
+        <p className="tnum truncate text-[13px] text-ink-2">
+          {selected.roles.includes('fastest') ? 'Fastest' : extraTimeText(selected.extraS)} · {formatDistance(selected.metrics.distanceM)}
+        </p>
+      </div>
+      {view === 'plan' && (
+        <button type="button" onClick={openDetails} className="pressable inline-flex min-h-11 items-center gap-0.5 rounded-full bg-fill pl-3.5 pr-2 text-[14px] font-semibold text-ink">
+          Details <ChevronRight className="size-4" aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  ) : (
+    <div>
+      <p className="text-[17px] font-semibold text-ink">Plan a walk</p>
+      <p className="text-[13px] text-ink-2">Choose two places, or tap the map.</p>
+    </div>
+  );
+
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-bg text-ink">
-      <a href="#planner" className="sr-only-focusable absolute left-3 top-3 z-50 rounded-lg bg-accent px-3 py-2 font-semibold text-accent-contrast">
+    <div className="relative h-dvh w-full overflow-hidden bg-canvas text-ink">
+      <a href="#planner" onClick={(event) => {
+        event.preventDefault(); // The URL hash stores the trip, not in-page navigation.
+        if (!isPanel) setDetent('large');
+        document.getElementById('planner')?.focus({ preventScroll: true });
+      }} className="sr-only-focusable absolute left-3 top-3 z-50 rounded-full bg-ink px-4 py-2.5 font-semibold text-white">
         Skip to route planner
       </a>
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </p>
 
       <MapView
-        theme={theme}
         onStatusChange={setMapStatus}
         onMapClick={onMapClick}
-        ariaLabel={`Map of the supported Cork walking area. ${pickTarget ? `Tap to set the ${pickTarget === 'origin' ? 'start' : 'destination'}.` : ''}`}
+        ariaLabel={`Map of the supported Cork walking area.${pickTarget ? ` Tap to set the ${pickTarget === 'origin' ? 'start' : 'destination'}.` : ''}${selected ? ` Showing ${routeTitle(selected)} route.` : ''}`}
       >
-        {manifest && <CoverageOverlay coverage={manifest.coverage} theme={theme} />}
-        {manifest && (
-          <LandmarkOverlay landmarks={landmarks} theme={theme} hasGlyphs={mapStatus.kind === 'ready' && mapStatus.basemap.kind === 'remote'} />
-        )}
-        <RouteOverlay routes={routes} selectedId={selected?.id ?? null} theme={theme} />
-        <EvidenceOverlay route={showEvidence ? selected : null} lampCoords={lampCoords} theme={theme} />
+        {manifest && <CoverageOverlay coverage={manifest.coverage} />}
+        {manifest && <LandmarkOverlay landmarks={landmarks} hasGlyphs={mapStatus.kind === 'ready' && mapStatus.basemap.kind === 'remote'} />}
+        <RouteOverlay routes={routes} selectedId={selected?.id ?? null} evidenceOn={evidenceOn} />
+        <EvidenceOverlay route={evidenceOn ? selected : null} lampCoords={lampCoords} />
+        <RouteCallouts graph={engine?.graph ?? null} routes={routes} selectedId={selected?.id ?? null} onSelect={selectRoute} />
         <EndpointMarker point={origin?.point ?? null} role="origin" label={origin?.label ?? ''} />
         <EndpointMarker point={destination?.point ?? null} role="destination" label={destination?.label ?? ''} />
-        <FitToRoute route={selected} padding={padding} reduceMotion={reduceMotion} />
-        {manifest && <FitToBounds bbox={manifest.coverage.bbox} padding={padding} />}
+        <FitToRoute route={selected} padding={padding} reduceMotion={reduceMotion} nonce={fitNonce} />
+        {manifest && !selected && <FitToBounds bbox={manifest.coverage.bbox} padding={padding} />}
       </MapView>
 
-      <aside
-        id="planner"
-        aria-label="Route planner"
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 p-3 md:inset-y-0 md:right-auto md:p-4"
-        style={isDesktop ? { width: DESKTOP_PANEL_WIDTH } : undefined}
-      >
-        <div
-          ref={panelRef}
-          className="pointer-events-auto flex max-h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface-glass shadow-float backdrop-blur-xl"
+      {!isPanel && (
+        <button
+          type="button"
+          onClick={() => setAboutOpen(true)}
+          aria-label="About Solas, data and settings"
+          className="glass pressable absolute left-3 z-10 inline-flex h-11 items-center gap-2 rounded-full pl-1.5 pr-4"
+          style={{ top: 'calc(var(--safe-top) + 12px)' }}
         >
-          <div className="space-y-3 p-3 sm:p-4">
-            <header className="flex items-center gap-3">
-              <BrandMark size={isDesktop ? 40 : 34} />
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg font-extrabold leading-tight tracking-tight">Solas</h1>
-                <p className="truncate text-sm text-ink-muted">The better walk is worth seeing.</p>
-              </div>
-              <IconButton label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} onClick={toggleTheme}>
-                {theme === 'dark' ? <Sun className="size-5" aria-hidden="true" /> : <Moon className="size-5" aria-hidden="true" />}
-              </IconButton>
-            </header>
+          <BrandMark size={32} />
+          <span className="text-[16px] font-bold tracking-[-0.01em] text-ink">Solas</span>
+        </button>
+      )}
 
-            {compactPlanner ? (
-              <div className="flex items-center gap-2 rounded-xl border border-line bg-surface p-2">
-                <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">
-                  <span className="sr-only">Route from </span>
-                  <span className="mr-1 inline-flex size-5 items-center justify-center rounded-full bg-ink text-[11px] font-extrabold text-bg" aria-hidden="true">
-                    A
-                  </span>
-                  <span className="align-middle">{origin?.label}</span>
-                  <span className="sr-only"> to </span>
-                  <span className="mx-1 text-ink-subtle" aria-hidden="true">
-                    →
-                  </span>
-                  <span className="mr-1 inline-flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-accent-contrast" aria-hidden="true">
-                    B
-                  </span>
-                  <span className="align-middle">{destination?.label}</span>
-                </p>
-                <IconButton label="Edit start and destination" onClick={() => setEditingEndpoints(true)}>
-                  <Pencil className="size-4" aria-hidden="true" />
-                </IconButton>
-              </div>
-            ) : (
-              <form className="relative space-y-2.5" aria-label="Choose start and destination" onSubmit={(e) => e.preventDefault()}>
-                <EndpointField
-                  role="origin"
-                  endpoint={origin}
-                  landmarks={landmarks}
-                  disabled={!engine}
-                  picking={pickTarget === 'origin'}
-                  locating={locating}
-                  error={fieldError('origin')}
-                  onChange={(e) => setEndpoint('origin', e)}
-                  onTogglePick={() => setExplicitPick(pickTarget === 'origin' ? null : 'origin')}
-                  onUseLocation={onUseLocation}
-                />
-                <EndpointField
-                  role="destination"
-                  endpoint={destination}
-                  landmarks={landmarks}
-                  disabled={!engine}
-                  picking={pickTarget === 'destination'}
-                  error={fieldError('destination')}
-                  onChange={(e) => setEndpoint('destination', e)}
-                  onTogglePick={() => setExplicitPick(pickTarget === 'destination' ? null : 'destination')}
-                />
-                <div className="flex items-center justify-end gap-1">
-                  {!isDesktop && editingEndpoints && origin && destination && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingEndpoints(false)}
-                      className="mr-auto inline-flex h-9 items-center rounded-lg px-2.5 text-sm font-semibold text-accent hover:bg-surface-raised"
-                    >
-                      Done
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={swap}
-                    disabled={!origin && !destination}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-ink-muted hover:bg-surface-raised hover:text-ink disabled:opacity-40"
-                  >
-                    <ArrowUpDown className="size-4" aria-hidden="true" /> Swap start and destination
-                  </button>
-                </div>
-              </form>
-            )}
+      <MapControls
+        evidenceOn={evidenceOn}
+        onToggleEvidence={() => setEvidenceOn((v) => !v)}
+        canFit={Boolean(selected)}
+        onFit={() => {
+          if (!isPanel) setDetent('peek');
+          setFitNonce((n) => n + 1);
+        }}
+        top={isPanel ? '120px' : 'calc(var(--safe-top) + 12px)'}
+      />
 
-            {mapStatus.kind === 'unsupported' && <Notice tone="error">{mapStatus.message}</Notice>}
-            {mapStatus.kind === 'ready' && mapStatus.basemap.kind === 'offline' && (
-              <Notice tone="warning" title="Basemap unavailable">
-                Map tiles could not be loaded, so only Solas&apos;s own data is shown. Routes still work.
-              </Notice>
-            )}
-            {mapStatus.kind === 'ready' && mapStatus.tilesDegraded && mapStatus.basemap.kind === 'remote' && (
-              <Notice tone="warning">Some map tiles failed to load. Routes are unaffected.</Notice>
-            )}
+      {showLegend && (
+        <EvidenceLegend
+          key={isPanel ? 'panel' : 'sheet'}
+          collapsible={!isPanel}
+          onHeightChange={setLegendPx}
+          style={isPanel ? { left: panelW + 28, bottom: 32 } : { left: 12, top: 'calc(var(--safe-top) + 64px)' }}
+        />
+      )}
+
+      {explicitPick && isPanel && (
+        <div className="pointer-events-none absolute top-5 z-20 -translate-x-1/2" style={{ left: panelW + (vw - panelW) / 2 }}>
+          <div className="glass pointer-events-auto flex items-center gap-2 rounded-full py-1 pl-4 pr-1">
+            <span className="text-[14px] font-semibold text-ink">Tap the map to set your {explicitPick === 'origin' ? 'start' : 'destination'}</span>
+            <IconButton label="Cancel choosing on the map" onClick={() => setExplicitPick(null)}>
+              <X className="size-4" aria-hidden="true" />
+            </IconButton>
           </div>
-          {isDesktop && <div className="min-h-0 flex-1 overflow-y-auto border-t border-line p-4">{results}</div>}
-        </div>
-      </aside>
-
-      {pickTarget && (
-        <div
-          className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2"
-          style={{ top: isDesktop ? 20 : panelHeight + 20, marginLeft: isDesktop ? DESKTOP_PANEL_WIDTH / 2 : 0 }}
-        >
-          <p aria-live="polite" className="rounded-full border border-line bg-surface-glass px-4 py-2 text-sm font-semibold shadow-float backdrop-blur-xl">
-            Tap the map to set your {pickTarget === 'origin' ? 'start' : 'destination'}
-          </p>
         </div>
       )}
 
-      {!isDesktop && (
-        <section aria-label="Routes" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3">
-          <div
-            ref={sheetRef}
-            className="pointer-events-auto max-h-[52dvh] overflow-y-auto rounded-2xl border border-line bg-surface-glass p-3 shadow-float backdrop-blur-xl"
-          >
-            {results}
-          </div>
-        </section>
+      {isPanel ? (
+        <aside
+          id="planner"
+          tabIndex={-1}
+          aria-label="Route planner"
+          className="glass-strong absolute bottom-3 left-3 top-3 z-20 flex flex-col overflow-hidden rounded-[28px]"
+          style={{ width: panelW }}
+        >
+          <header className="flex shrink-0 items-center gap-3 px-5 pb-3 pt-4">
+            <BrandMark size={36} />
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[20px] font-bold leading-tight tracking-[-0.02em] text-ink">Solas</h1>
+              <p className="truncate text-[13px] text-ink-2">The better walk is worth seeing.</p>
+            </div>
+            <IconButton label="About Solas, data and settings" variant="filled" onClick={() => setAboutOpen(true)} tooltipSide="left">
+              <Info className="size-5" aria-hidden="true" />
+            </IconButton>
+          </header>
+          <div className="scroll-y min-h-0 flex-1 px-5 pb-6 pt-1">{content}</div>
+        </aside>
+      ) : (
+        <div id="planner" tabIndex={-1}>
+          <h1 className="sr-only">Solas — the better walk is worth seeing</h1>
+          <BottomSheet label="Route planner" detent={detent} onDetentChange={setDetent} onHeightChange={setSheetPx} header={sheetHeader}>
+            {content}
+          </BottomSheet>
+        </div>
       )}
+
+      <AboutDialog
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        manifest={manifest}
+        reduceMotion={reduceMotion}
+        systemReduce={systemReduce}
+        onReduceMotion={setUserReduce}
+      />
     </div>
   );
 }

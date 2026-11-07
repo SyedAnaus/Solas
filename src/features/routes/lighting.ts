@@ -1,21 +1,34 @@
+import type { CSSProperties } from 'react';
 import { ROUTING_CONFIG } from '../../config/routing';
 import { LIGHTING_CLASSES, type LightingClass } from '../../lib/graph/types';
 import type { LightingBreakdown } from '../../lib/scoring/metrics';
 import { formatShare } from '../../lib/scoring/percent';
 
 export const LIGHTING_LABELS: Record<LightingClass, { short: string; long: string }> = {
-  mapped_lit: { short: 'Mapped lit', long: 'Mapped as lit in OpenStreetMap (lit=yes)' },
-  likely_lit: { short: 'Likely lit', long: 'Near a mapped street lamp; inferred, not confirmed' },
-  mapped_unlit: { short: 'Mapped unlit', long: 'Mapped as unlit in OpenStreetMap (lit=no)' },
-  unknown: { short: 'Unknown', long: 'No lighting information. This is not the same as dark.' },
+  mapped_lit: { short: 'Mapped lit', long: 'Mapped lit: the street is tagged lit=yes in OpenStreetMap.' },
+  likely_lit: { short: 'Likely lit', long: 'Likely lit: no lighting tag, but a mapped street lamp is within 30 m. Inferred, not confirmed.' },
+  mapped_unlit: { short: 'Mapped unlit', long: 'Mapped unlit: the street is tagged lit=no in OpenStreetMap.' },
+  unknown: { short: 'Unknown', long: 'Unknown: no lighting information. This is not the same as dark.' },
 };
 
-/** Fill + pattern per class so the bar never relies on colour alone. */
-export const LIGHTING_SWATCH: Record<LightingClass, string> = {
-  mapped_lit: 'bg-amber',
-  likely_lit: 'bg-[repeating-linear-gradient(135deg,var(--amber)_0_4px,transparent_4px_8px)] bg-amber-soft',
-  mapped_unlit: 'bg-[repeating-linear-gradient(90deg,var(--text-muted)_0_2px,transparent_2px_6px)] bg-surface-raised',
-  unknown: 'bg-[radial-gradient(var(--text-subtle)_1px,transparent_1.5px)] [background-size:5px_5px] bg-surface-raised',
+/** CSS for one tube segment, matching the map and EvidenceSwatch patterns. */
+export const LIGHTING_TUBE_STYLE: Record<LightingClass, CSSProperties> = {
+  mapped_lit: { background: 'linear-gradient(var(--ev-tube) 0 28%, var(--ev-lit) 28% 72%, var(--ev-tube) 72%)' },
+  likely_lit: {
+    backgroundColor: 'var(--ev-tube)',
+    backgroundImage: 'repeating-linear-gradient(90deg, var(--ev-likely) 0 6px, transparent 6px 10px)',
+    backgroundSize: '100% 44%',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  },
+  mapped_unlit: { background: 'linear-gradient(var(--ev-tube) 0 28%, #f19a94 28% 72%, var(--ev-tube) 72%)' },
+  unknown: {
+    backgroundColor: 'var(--ev-tube)',
+    backgroundImage: 'radial-gradient(circle, #ffffff 1.3px, transparent 1.7px)',
+    backgroundSize: '7px 100%',
+    backgroundRepeat: 'repeat-x',
+    backgroundPosition: '2px center',
+  },
 };
 
 export function lightingSummaryText(lighting: LightingBreakdown): string {

@@ -20,14 +20,14 @@ Numbering follows the project brief. Each phase leaves the app buildable, tested
 | 3 | Real fastest route: browser A*, snapping, map-tap and landmark endpoints | Done |
 | 4 | Lighting evidence (4 classes with provenance) + better-lit alternative: candidate generation, detour cap, dedupe, 10-point threshold, side-by-side cards, evidence overlay | Done |
 | 5 | Easier walking and step-free routes: hard exclusions, surface/smoothness preferences, unknown-data warnings, refined preferences | Done |
-| 6 | UI refinement, Playwright checks, docs and final deployment hardening | Next |
+| 6 | UI refinement, Playwright checks, docs and final deployment hardening | Implemented; see [audit](PHASE6_AUDIT.md) |
 
 ## Key decisions
 
 - **Static only.** No server code, no API keys. `VITE_*` variables are public, so none hold secrets.
 - **Base path.** Vite `base` is `/Solas/` by default and is set from the repository name in CI.
   Data is loaded via `import.meta.env.BASE_URL`. Shareable state lives in the URL hash.
-- **Basemap.** OpenFreeMap keyless styles (`dark` / `positron`), then a second style, then a
+- **Basemap.** Light-only OpenFreeMap keyless `positron`, then `liberty`, then a
   built-in offline style showing only Solas's own data.
 - **Routing.** A* with an admissible straight-line heuristic over a compact directed graph.
   All tunable numbers live in `src/config/routing.ts`.

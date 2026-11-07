@@ -1,25 +1,36 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { Tooltip } from './Tooltip';
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
   children: ReactNode;
+  variant?: 'glass' | 'plain' | 'filled';
+  tooltipSide?: 'top' | 'bottom' | 'left' | 'right';
+  /** Hide the visual tooltip (e.g. when the label is already visible nearby). */
+  noTooltip?: boolean;
 }
 
-/** A 44×44 px touch target with a required accessible label. */
+const VARIANT = {
+  glass: 'glass text-ink hover:bg-white',
+  plain: 'bg-transparent text-ink-2 hover:bg-fill hover:text-ink',
+  filled: 'bg-fill text-ink hover:bg-link-water',
+} as const;
+
+/** A 44×44 px touch target with a required accessible label and a hover/focus tooltip. */
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { label, children, className = '', ...rest },
+  { label, children, className = '', variant = 'plain', tooltipSide = 'bottom', noTooltip = false, ...rest },
   ref,
 ) {
-  return (
+  const button = (
     <button
       ref={ref}
       type="button"
       aria-label={label}
-      title={label}
-      className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-glass text-ink transition-colors hover:border-line-strong hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`pressable inline-flex size-11 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45 ${VARIANT[variant]} ${className}`}
       {...rest}
     >
       {children}
     </button>
   );
+  return noTooltip ? button : <Tooltip content={label} side={tooltipSide}>{button}</Tooltip>;
 });

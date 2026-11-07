@@ -20,12 +20,15 @@ export function clampPadding(p: Padding, width: number, height: number): Padding
   return { top: p.top * kv, bottom: p.bottom * kv, left: p.left * kh, right: p.right * kh };
 }
 
-/** Fit the camera to a route when it changes, respecting reduced-motion preferences. */
-export function useFitToRoute(route: RouteCandidate | null, padding: Padding, reduceMotion: boolean): void {
+/**
+ * Fit the camera to a route when it changes, when panels resize enough to hide part of it, or
+ * when `nonce` changes (the "show whole route" button). Reduced motion jumps instead of flying.
+ */
+export function useFitToRoute(route: RouteCandidate | null, padding: Padding, reduceMotion: boolean, nonce = 0): void {
   const { map } = useMapContext();
-  // Refit when the route changes or when floating panels resize enough to hide part of it.
-  const pad = `${Math.round(padding.top / 24)}:${Math.round(padding.bottom / 24)}:${Math.round(padding.left / 24)}`;
-  const key = route ? `${route.id}:${route.geometry.coordinates.length}:${route.metrics.distanceM.toFixed(1)}:${pad}` : null;
+  const pad = `${Math.round(padding.top / 24)}:${Math.round(padding.bottom / 24)}:${Math.round(padding.left / 24)}:${Math.round(padding.right / 24)}`;
+  const coords = route?.geometry.coordinates;
+  const key = route && coords ? `${route.id}:${coords[0]}:${coords[coords.length - 1]}:${coords.length}:${route.metrics.distanceM.toFixed(1)}:${pad}:${nonce}` : null;
   useEffect(() => {
     if (!map || !route || route.geometry.coordinates.length < 2) return;
     let w = Infinity;
@@ -38,13 +41,16 @@ export function useFitToRoute(route: RouteCandidate | null, padding: Padding, re
       e = Math.max(e, lon);
       n = Math.max(n, lat);
     }
-    map.fitBounds(
+    const fit = () => map.fitBounds(
       [
         [w, s],
         [e, n],
       ],
-      { padding, duration: reduceMotion ? 0 : 700, maxZoom: 17 },
+      { padding, duration: reduceMotion ? 0 : 650, maxZoom: 17 },
     );
+    fit();
+    map.on('resize', fit);
+    return () => { map.off('resize', fit); };
     // Callers recreate `padding` and `route` objects; `key` captures the meaningful change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, key, reduceMotion]);

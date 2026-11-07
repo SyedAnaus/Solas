@@ -1,87 +1,71 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
-
 /*
- * Solas design tokens.
- * Route selection uses lavender; lighting evidence uses amber; accessibility uses teal.
- * Status is never shown by colour alone: every coloured state also has an icon, pattern or label.
+ * Solas design tokens — light only.
+ * Palette: Nourished #EBE5D3 · Pow Orange #E05320 · Link Water #D3D9EB · Bright Slate #3B4497.
+ * Text pairs were measured: ink 17.5:1, ink-2 8.2:1, ink-3 5.6:1 on white (4.9:1 on glass);
+ * slate 8.5:1; orange is used for large type, icons and route lines only (small orange text uses
+ * orange-text, 5.8:1). Never put ink-3 on link-water (3.99:1).
  */
-:root,
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #070b1a;
-  --surface: #0f1530;
-  --surface-raised: #161d3f;
-  --surface-glass: rgb(15 21 48 / 0.86);
-  --border: rgb(165 176 230 / 0.18);
-  --border-strong: rgb(165 176 230 / 0.32);
-  --text: #eef0fb;
-  --text-muted: #aab0d4;
-  --text-subtle: #8e95bd;
-  --accent: #b79cff;
-  --accent-strong: #9d7bff;
-  --accent-contrast: #140b33;
-  --accent-soft: rgb(183 156 255 / 0.16);
-  --amber: #f8c15c;
-  --amber-soft: rgb(248 193 92 / 0.16);
-  --teal: #5fe0c8;
-  --teal-soft: rgb(95 224 200 / 0.14);
-  --danger: #ff8a8a;
-  --danger-soft: rgb(255 138 138 / 0.14);
-  --focus: #d7c8ff;
-  --shadow: 0 18px 50px -12px rgb(0 0 0 / 0.65), 0 2px 6px rgb(0 0 0 / 0.35);
-  --map-bg: #0a0f24;
-}
-
-:root[data-theme='light'] {
+:root {
   color-scheme: light;
-  --bg: #f4f5fb;
+  --canvas: #e9edf6;
   --surface: #ffffff;
-  --surface-raised: #f6f5ff;
-  --surface-glass: rgb(255 255 255 / 0.92);
-  --border: rgb(40 44 90 / 0.14);
-  --border-strong: rgb(40 44 90 / 0.28);
-  --text: #121633;
-  --text-muted: #474d74;
-  --text-subtle: #5d6389;
-  --accent: #6a4bd6;
-  --accent-strong: #5636c4;
-  --accent-contrast: #ffffff;
-  --accent-soft: rgb(106 75 214 / 0.1);
-  --amber: #a35a00;
-  --amber-soft: rgb(245 158 11 / 0.14);
-  --teal: #0b6f66;
-  --teal-soft: rgb(13 148 136 / 0.12);
+  --surface-2: #f2f4fa;
+  --fill: #e8ebf5;
+  --line: rgb(20 24 46 / 0.09);
+  --line-strong: rgb(20 24 46 / 0.16);
+  --ink: #14182e;
+  --ink-2: #474d6e;
+  --ink-3: #5f6687;
+  --slate: #3b4497;
+  --slate-strong: #2f3680;
+  --link-water: #d3d9eb;
+  --orange: #e05320;
+  --orange-text: #b23f0e;
+  --cream: #ebe5d3;
+  --cream-soft: #f7f3e8;
   --danger: #b42318;
-  --danger-soft: rgb(180 35 24 / 0.08);
-  --focus: #5636c4;
-  --shadow: 0 16px 40px -14px rgb(18 22 51 / 0.28), 0 2px 6px rgb(18 22 51 / 0.08);
-  --map-bg: #eef0f6;
+  --danger-soft: #fdecea;
+  --ev-tube: #1f2350;
+  --ev-lit: #ffc629;
+  --ev-likely: #8de0c2;
+  --glass: rgb(255 255 255 / 0.78);
+  --glass-strong: rgb(255 255 255 / 0.9);
+  --glass-border: rgb(255 255 255 / 0.65);
+  --shadow-float: 0 12px 32px -12px rgb(31 35 80 / 0.28), 0 2px 8px rgb(31 35 80 / 0.08);
+  --shadow-card: 0 1px 2px rgb(31 35 80 / 0.06), 0 6px 16px -10px rgb(31 35 80 / 0.25);
+  --focus: #3b4497;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @theme inline {
-  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --color-bg: var(--bg);
+  --font-sans: 'Inter Variable', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --color-canvas: var(--canvas);
   --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
-  --color-surface-glass: var(--surface-glass);
-  --color-line: var(--border);
-  --color-line-strong: var(--border-strong);
-  --color-ink: var(--text);
-  --color-ink-muted: var(--text-muted);
-  --color-ink-subtle: var(--text-subtle);
-  --color-accent: var(--accent);
-  --color-accent-strong: var(--accent-strong);
-  --color-accent-contrast: var(--accent-contrast);
-  --color-accent-soft: var(--accent-soft);
-  --color-amber: var(--amber);
-  --color-amber-soft: var(--amber-soft);
-  --color-teal: var(--teal);
-  --color-teal-soft: var(--teal-soft);
+  --color-surface-2: var(--surface-2);
+  --color-fill: var(--fill);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-slate: var(--slate);
+  --color-slate-strong: var(--slate-strong);
+  --color-link-water: var(--link-water);
+  --color-orange: var(--orange);
+  --color-orange-text: var(--orange-text);
+  --color-cream: var(--cream);
+  --color-cream-soft: var(--cream-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --shadow-float: var(--shadow);
+  --color-ev-tube: var(--ev-tube);
+  --color-ev-lit: var(--ev-lit);
+  --color-ev-likely: var(--ev-likely);
+  --shadow-float: var(--shadow-float);
+  --shadow-card: var(--shadow-card);
 }
 
 html,
@@ -92,19 +76,29 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: var(--font-sans);
-  font-feature-settings: 'tnum' 1;
+  font-size: 15px;
+  line-height: 1.4;
+  font-feature-settings: 'cv11' 1, 'ss03' 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
   overflow: hidden;
   overscroll-behavior: none;
 }
 
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two-ring focus indicator: visible on white, glass and the map. */
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgb(255 255 255 / 0.9);
+  border-radius: 10px;
 }
 
 .sr-only-focusable:not(:focus):not(:focus-within) {
@@ -116,18 +110,55 @@ body {
   white-space: nowrap;
 }
 
-/* MapLibre controls, restyled to match Solas surfaces. */
+/* Frosted glass surfaces (reference: "Frosted" concept). */
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float), inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+.glass-strong {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(28px) saturate(1.7);
+  backdrop-filter: blur(28px) saturate(1.7);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float), inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong {
+    background: rgb(255 255 255 / 0.96);
+  }
+}
+
+/* Interactive press feedback. */
+.pressable {
+  transition:
+    transform 160ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+.pressable:active {
+  transform: scale(0.98);
+}
+
+/* MapLibre controls in Solas glass. */
 .maplibregl-map {
   font-family: var(--font-sans);
-  background: var(--map-bg);
+  background: #f4f1ea;
 }
 
 .maplibregl-ctrl-group {
-  background: var(--surface-glass) !important;
-  border: 1px solid var(--border);
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid var(--glass-border);
   border-radius: 14px !important;
-  box-shadow: var(--shadow) !important;
-  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-float) !important;
   overflow: hidden;
 }
 
@@ -137,63 +168,82 @@ body {
 }
 
 .maplibregl-ctrl-group button + button {
-  border-top: 1px solid var(--border) !important;
-}
-
-[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
-  filter: invert(1) hue-rotate(180deg) brightness(1.15);
+  border-top: 1px solid var(--line) !important;
 }
 
 .maplibregl-ctrl-attrib {
-  background: var(--surface-glass) !important;
-  color: var(--text-muted);
+  background: rgb(255 255 255 / 0.82) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--ink-2);
   font-size: 11px;
-  line-height: 1.4;
+  line-height: 1.35;
   border-radius: 10px 0 0 0;
-  padding: 2px 8px !important;
+  padding: 3px 8px !important;
 }
 
 .maplibregl-ctrl-attrib a {
-  color: var(--text);
+  color: var(--ink);
 }
 
 .maplibregl-ctrl-attrib-button {
   display: none;
 }
 
-/* Keep attribution visible above the mobile results sheet. */
+/* Keep attribution and controls above the mobile sheet and clear of the home indicator. */
 .maplibregl-ctrl-bottom-right,
 .maplibregl-ctrl-bottom-left {
-  bottom: var(--sheet-offset, 0px);
-  transition: bottom 160ms ease;
+  bottom: var(--map-bottom-inset, 0px);
+  transition: bottom 280ms var(--ease-out);
 }
 
-/* Phones: pinch to zoom; the planner covers the top-right corner. */
+.maplibregl-ctrl-top-right {
+  top: calc(var(--safe-top) + 4px);
+}
+
 @media (max-width: 767px) {
   .maplibregl-ctrl-top-right {
     display: none;
   }
 }
 
+/* Start (A) and destination (B) markers: shape + letter, not colour alone. */
 .solas-endpoint-marker {
-  width: 34px;
-  height: 40px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
   pointer-events: none;
+}
+
+.solas-endpoint-marker[data-variant='origin'] {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--slate);
+  border: 3px solid var(--slate);
+  font: 800 13px/1 var(--font-sans);
+  box-shadow: 0 4px 12px rgb(31 35 80 / 0.35);
+}
+
+.solas-endpoint-marker[data-variant='destination'] {
+  width: 34px;
+  height: 42px;
+  display: flex;
+  justify-content: center;
 }
 
 .solas-endpoint-pin {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   margin-top: 1px;
   border-radius: 50% 50% 50% 4px;
   transform: rotate(-45deg);
-  border: 2.5px solid var(--surface);
-  box-shadow: 0 6px 16px rgb(0 0 0 / 0.35);
+  background: var(--slate);
+  color: #fff;
+  border: 3px solid #fff;
+  box-shadow: 0 6px 14px rgb(31 35 80 / 0.4);
 }
 
 .solas-endpoint-pin > span {
@@ -201,16 +251,95 @@ body {
   font: 800 13px/1 var(--font-sans);
 }
 
-.solas-endpoint-marker[data-variant='origin'] .solas-endpoint-pin {
-  background: var(--text);
-  color: var(--bg);
+/* Route time callouts on the map (Apple Maps style). */
+.solas-callout {
+  font: 600 13px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgb(255 255 255 / 0.92);
+  color: var(--ink);
+  box-shadow: 0 6px 16px -6px rgb(31 35 80 / 0.45);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 180ms var(--ease-out),
+    background-color 160ms ease;
 }
 
-.solas-endpoint-marker[data-variant='destination'] .solas-endpoint-pin {
-  background: var(--accent);
-  color: var(--accent-contrast);
+.solas-callout:hover {
+  transform: translateY(-1px);
 }
 
+.solas-callout[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.solas-callout .swatch {
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.solas-callout[aria-pressed='true'] .swatch {
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
+/* Skeletons. */
+@keyframes solas-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--fill) 0%, #f7f8fc 50%, var(--fill) 100%);
+  background-size: 200% 100%;
+  animation: solas-shimmer 1.4s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+@keyframes solas-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.enter {
+  animation: solas-fade-up 260ms var(--ease-out) both;
+}
+
+@keyframes solas-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.slide-in {
+  animation: solas-slide-in 280ms var(--ease-out) both;
+}
+
+/* Reduced motion: system setting or the in-app switch. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -228,20 +357,33 @@ body {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }
 
-@keyframes solas-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+/* Native dialog backdrop. */
+dialog::backdrop {
+  background: rgb(20 24 46 / 0.28);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
-.skeleton {
-  background: linear-gradient(90deg, var(--surface-raised) 0%, var(--border-strong) 50%, var(--surface-raised) 100%);
-  background-size: 200% 100%;
-  animation: solas-shimmer 1.6s ease-in-out infinite;
-  border-radius: 8px;
+/* Thin, unobtrusive scrollbars inside panels. */
+.scroll-y {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+.scroll-x > * {
+  scroll-snap-align: start;
 }

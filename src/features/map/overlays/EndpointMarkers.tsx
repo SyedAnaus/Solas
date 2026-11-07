@@ -14,8 +14,12 @@ function makeMarkerElement(letter: string, label: string, variant: 'origin' | 'd
   pin.className = 'solas-endpoint-pin';
   const text = document.createElement('span');
   text.textContent = letter;
-  pin.appendChild(text);
-  el.appendChild(pin);
+  if (variant === 'origin') {
+    el.appendChild(text);
+  } else {
+    pin.appendChild(text);
+    el.appendChild(pin);
+  }
   return el;
 }
 
@@ -27,7 +31,7 @@ export function EndpointMarker({ point, role, label }: { point: LngLat | null; r
   useEffect(() => {
     if (!map || lon === undefined || lat === undefined) return;
     const element = makeMarkerElement(role === 'origin' ? 'A' : 'B', `${role === 'origin' ? 'Start' : 'Destination'}: ${label}`, role);
-    const marker = new Marker({ element, anchor: 'bottom' }).setLngLat([lon, lat]).addTo(map);
+    const marker = new Marker({ element, anchor: role === 'origin' ? 'center' : 'bottom' }).setLngLat([lon, lat]).addTo(map);
     return () => {
       marker.remove();
     };

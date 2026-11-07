@@ -14,18 +14,19 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 export type OverlayLayer = DistributiveOmit<Exclude<LayerSpecification, { type: 'background' }>, 'source'>;
 
 /**
- * Keep a GeoJSON source and its layers on the map. Re-adds them after every style change (theme
- * switch or basemap fallback) or when the layer definitions change, and updates data in place.
+ * Keep a GeoJSON source and its layers on the map. Re-adds them after a basemap change
+ * or when the layer definitions change, and updates data in place.
  * Pass memoised `layers` so they are not re-created on every render.
  */
 export function useGeoJsonLayers(
   sourceId: string,
   data: FeatureCollection | null,
   layers: OverlayLayer[],
-  options: { belowLabels?: boolean } = {},
+  options: { belowLabels?: boolean; beforeLayerId?: string } = {},
 ): void {
   const { map, styleVersion } = useMapContext();
   const belowLabels = options.belowLabels ?? true;
+  const beforeLayerId = options.beforeLayerId;
   const dataRef = useRef(data);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function useGeoJsonLayers(
     if (!map.getSource(sourceId)) {
       map.addSource(sourceId, { type: 'geojson', data: dataRef.current ?? EMPTY_FC });
     }
-    const before = belowLabels ? firstSymbolLayerId(map) : undefined;
+    const before = beforeLayerId && map.getLayer(beforeLayerId) ? beforeLayerId : belowLabels ? firstSymbolLayerId(map) : undefined;
     for (const layer of layers) {
       if (!map.getLayer(layer.id)) {
         map.addLayer({ ...layer, source: sourceId } as LayerSpecification, before && map.getLayer(before) ? before : undefined);
@@ -53,7 +54,7 @@ export function useGeoJsonLayers(
         /* style already replaced */
       }
     };
-  }, [map, styleVersion, sourceId, layers, belowLabels]);
+  }, [map, styleVersion, sourceId, layers, belowLabels, beforeLayerId]);
 
   useEffect(() => {
     if (!map || styleVersion === 0) return;

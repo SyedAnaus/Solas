@@ -5,13 +5,13 @@ export interface SegmentedOption<T extends string | number> {
   label: string;
   icon?: ReactNode;
   disabled?: boolean;
-  /** Shown as a tooltip and to screen readers, e.g. why an option is disabled. */
+  /** Read to screen readers and shown as a tooltip, e.g. why an option is disabled. */
   description?: string;
 }
 
 /**
- * Radio group styled as segmented buttons. Native radios give arrow-key navigation and correct
- * screen-reader semantics for free.
+ * iOS-style segmented control built on native radios: arrow keys move between options and screen
+ * readers announce "radio, 2 of 4". The selected option is a raised white thumb.
  */
 export function Segmented<T extends string | number>({
   legend,
@@ -31,8 +31,11 @@ export function Segmented<T extends string | number>({
   const name = useId();
   return (
     <fieldset className="min-w-0">
-      <legend className={hideLegend ? 'sr-only' : 'mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-subtle'}>{legend}</legend>
-      <div className="grid gap-1 rounded-xl border border-line bg-surface p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      <legend className={hideLegend ? 'sr-only' : 'mb-1.5 text-[13px] font-semibold text-ink-2'}>{legend}</legend>
+      <div
+        className="grid gap-0.5 rounded-[14px] bg-fill p-[3px]"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
         {options.map((o) => {
           const id = `${name}-${o.value}`;
           const checked = o.value === value;
@@ -52,12 +55,12 @@ export function Segmented<T extends string | number>({
               <label
                 htmlFor={id}
                 title={o.description}
-                className={`flex cursor-pointer select-none flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-center font-semibold leading-tight transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-[var(--focus)] peer-disabled:cursor-not-allowed peer-disabled:opacity-45 ${
-                  size === 'sm' ? 'min-h-9 text-xs' : 'min-h-11 text-[12.5px]'
-                } ${checked ? 'bg-accent text-accent-contrast shadow-sm' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'}`}
+                className={`pressable flex cursor-pointer select-none flex-col items-center justify-center gap-0.5 rounded-[11px] px-1 text-center font-semibold leading-tight peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-[var(--focus)] peer-disabled:cursor-not-allowed peer-disabled:opacity-40 ${
+                  size === 'sm' ? 'min-h-11 text-[12.5px]' : 'min-h-[52px] text-[12px]'
+                } ${checked ? 'bg-surface text-ink shadow-[0_1px_3px_rgb(31_35_80/0.18),0_0_0_0.5px_rgb(31_35_80/0.06)]' : 'text-ink-2 hover:text-ink'}`}
               >
                 {o.icon}
-                <span className="truncate">{o.label}</span>
+                <span className="max-w-full truncate">{o.label}</span>
               </label>
               {o.description && (
                 <span id={`${id}-desc`} className="sr-only">

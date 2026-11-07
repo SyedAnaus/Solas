@@ -3,8 +3,8 @@ import type { RouteCandidate } from '../../../lib/routing/engine';
 import { useFitToRoute, type Padding } from '../camera';
 import { useMapContext } from '../MapContext';
 
-export function FitToRoute({ route, padding, reduceMotion }: { route: RouteCandidate | null; padding: Padding; reduceMotion: boolean }) {
-  useFitToRoute(route, padding, reduceMotion);
+export function FitToRoute({ route, padding, reduceMotion, nonce }: { route: RouteCandidate | null; padding: Padding; reduceMotion: boolean; nonce: number }) {
+  useFitToRoute(route, padding, reduceMotion, nonce);
   return null;
 }
 

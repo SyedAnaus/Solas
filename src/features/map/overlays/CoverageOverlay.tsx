@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import type { FeatureCollection } from 'geojson';
+import { PALETTE } from '../../../config/theme';
 import type { CoverageArea } from '../../../lib/graph/types';
-import type { ThemeName } from '../../../config/map';
-import { useGeoJsonLayers } from './useGeoJsonLayers';
+import { useGeoJsonLayers, type OverlayLayer } from './useGeoJsonLayers';
 
-/** Dashed outline of the area Solas has walking data for, with the outside gently dimmed. */
-export function CoverageOverlay({ coverage, theme }: { coverage: CoverageArea; theme: ThemeName }) {
+/** Dashed outline of the area Solas has walking data for, with the outside gently veiled. */
+export function CoverageOverlay({ coverage }: { coverage: CoverageArea }) {
   const data = useMemo<FeatureCollection>(() => {
     const [w, s, e, n] = coverage.bbox;
     const pad = 0.5;
@@ -25,20 +25,23 @@ export function CoverageOverlay({ coverage, theme }: { coverage: CoverageArea; t
     };
   }, [coverage]);
 
-  const dark = theme === 'dark';
-  useGeoJsonLayers('solas-coverage', data, [
-    {
-      id: 'solas-coverage-mask',
-      type: 'fill',
-      filter: ['==', ['get', 'role'], 'mask'],
-      paint: { 'fill-color': dark ? '#04060f' : '#1b1f3b', 'fill-opacity': dark ? 0.45 : 0.12 },
-    },
-    {
-      id: 'solas-coverage-outline',
-      type: 'line',
-      filter: ['==', ['get', 'role'], 'outline'],
-      paint: { 'line-color': dark ? '#b79cff' : '#5636c4', 'line-width': 1.5, 'line-opacity': 0.7, 'line-dasharray': [3, 2] },
-    },
-  ]);
+  const layers = useMemo<OverlayLayer[]>(
+    () => [
+      {
+        id: 'solas-coverage-mask',
+        type: 'fill',
+        filter: ['==', ['get', 'role'], 'mask'],
+        paint: { 'fill-color': '#E9EDF6', 'fill-opacity': 0.55 },
+      },
+      {
+        id: 'solas-coverage-outline',
+        type: 'line',
+        filter: ['==', ['get', 'role'], 'outline'],
+        paint: { 'line-color': PALETTE.brightSlate, 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [3, 2] },
+      },
+    ],
+    [],
+  );
+  useGeoJsonLayers('solas-coverage', data, layers);
   return null;
 }

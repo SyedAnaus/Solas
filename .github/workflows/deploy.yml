@@ -37,6 +37,12 @@ jobs:
       - name: Unit and component tests
         run: npm test
 
+      - name: Install browser for responsive checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Responsive and accessibility checks
+        run: npm run test:e2e
+
       - name: Build for https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: npm run build
         env:

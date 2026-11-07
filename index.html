@@ -1,25 +1,13 @@
 <!doctype html>
-<html lang="en-IE" data-theme="dark">
+<html lang="en-IE">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="Solas compares walking routes in Cork City: fastest, better-lit, easier and step-free options, with honest evidence about lighting and accessibility data." />
-    <meta name="theme-color" content="#070b1a" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f4f5fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#e9edf6" />
+    <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>Solas · Cork walking routes</title>
-    <script>
-      // Apply the saved or system theme before first paint to avoid a flash.
-      (function () {
-        var theme = 'dark';
-        try {
-          var saved = localStorage.getItem('solas:theme');
-          if (saved === 'light' || saved === 'dark') theme = saved;
-          else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
-        } catch (e) {}
-        document.documentElement.setAttribute('data-theme', theme);
-      })();
-    </script>
   </head>
   <body>
     <noscript>Solas needs JavaScript to draw the map and calculate walking routes.</noscript>
