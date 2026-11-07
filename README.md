@@ -2,7 +2,7 @@
 
 **The better walk is worth seeing.** Solas compares walking routes in a small part of Cork City
 (University College Cork ↔ Parnell Place Bus Station) and shows the trade-off between the fastest
-walk and alternatives that are better lit, easier underfoot or step-free, with honest evidence about
+walk and alternatives that are better lit, easier underfoot, and step free, with honest evidence about
 what the map data does and does not know.
 
 Solas does **not** promise a "safe" route or a certified accessible route. It reports what
